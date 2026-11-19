@@ -1,0 +1,11 @@
+# secrets
+.env
+*.key
+*.pem
+# runtime state / data (never commit)
+stacks/*/ts-state/
+stacks/*/data/
+stacks/*/config/
+stacks/*/cache/
+stacks/*/conf/
+stacks/*/work/

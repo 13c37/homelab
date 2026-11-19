@@ -1,0 +1,15 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    user: "1000:1000"
+    group_add:
+      - "992"                   # render group -> Intel Quick Sync (iGPU) for hardware transcoding
+    network_mode: host          # local discovery (DLNA / client auto-detect)
+    restart: unless-stopped
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    volumes:
+      - ./config:/config
+      - ./cache:/cache
+      - /media:/media:ro        # media library, read-only
