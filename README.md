@@ -74,6 +74,7 @@ Runtime data (`config/`, `data/`, `ts-state/`, …) and `.env` files are not par
 - **iGPU passthrough into the LXC** (`dev0: /dev/dri/renderD128`) and `group_add: 992` in the Jellyfin stack → hardware transcoding instead of maxing out the CPU.
 - **Host networking** for AdGuard (DNS on port 53 for the whole LAN) and Jellyfin (client auto-discovery); everything else uses normal port mappings.
 - **Public website without port forwarding:** a Tailscale container in userspace mode publishes the site through Tailscale Funnel with automatic HTTPS. The home IP stays hidden, it works behind DS-Lite/CGNAT, and the stack is isolated from the other services.
+- **Pinned image versions + Renovate PRs** instead of `latest`: no surprise breakage from a random `docker compose pull`, every update is reviewed with its changelog and can be rolled back by reverting one commit.
 - **Media is read-only for Jellyfin**; writes only go through the Samba share.
 - **AI agent in its own LXC, model on the gaming PC:** the agent can run commands, so it's isolated from the Docker services; inference runs on the 16 GB GPU over the LAN instead of on the 2-core server. Details in [hermes/](hermes).
 
@@ -93,9 +94,8 @@ Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to
 ## Roadmap
 
 - [ ] Vaultwarden (password manager)
-- [ ] Pin image versions instead of `latest`, update via a reviewed process
+- [x] Pin image versions instead of `latest`, update via a reviewed process (Renovate)
 - [ ] Internal HTTPS for LAN services through Caddy
-- [ ] Off-site copy of the backups
 - [x] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
 
 ## Usage
@@ -103,5 +103,12 @@ Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to
 ```bash
 cd /opt/stacks/<service>
 docker compose up -d
+```
+
+**Updates:** every image is pinned to an exact version. [Renovate](renovate.json) checks weekly and opens a pull request per update (patch updates grouped); nothing is merged automatically. After merging a PR, on the server:
+```bash
+cd /opt/stacks/<service>
+git pull            # or copy the changed compose.yaml
+docker compose pull && docker compose up -d
 ```
 For the site stack: `cp .env.example .env`, add a Tailscale auth key, `chmod 600 .env`, and enable HTTPS + Funnel in the Tailscale admin console first.

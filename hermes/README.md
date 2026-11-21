@@ -26,6 +26,19 @@ flowchart LR
 | Model | Gemma 4 12B, QAT (quantization-aware trained 4-bit) | fits fully in 16 GB VRAM with room for context |
 | Telegram bot | Telegram | chat interface from anywhere, no port forwarding |
 
+## Runtime benchmark (LM Studio)
+
+Same model, settings and prompt (~380 tokens output, 32k context, all 48 layers on GPU, thinking off):
+
+| Runtime | Generation | Time to first token |
+|---|---|---|
+| **Vulkan llama.cpp** | **58.9 tok/s** | **0.09 s** |
+| ROCm llama.cpp | 49.0 tok/s | 11.7 s |
+
+→ **Vulkan** is used: ~17 % faster and no warm-up delay. ROCm was uninstalled.
+
+Thinking mode is left **off** for the agent: on a 12B model it multiplies response time for little quality gain.
+
 ## Design decisions
 
 - **Separate LXC, not inside the Docker LXC.** The agent can execute commands and edit files; keeping it in its own container limits the blast radius and lets me snapshot/restore it independently.
