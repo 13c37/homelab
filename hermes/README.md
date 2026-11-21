@@ -1,0 +1,63 @@
+# hermes — self-hosted AI agent
+
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) (Nous Research) running in its own LXC on the Proxmox host, reachable from my phone through a private Telegram bot. The model runs **locally on my gaming PC** via LM Studio — no cloud LLM, no API costs, prompts never leave the house.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  tg[Telegram app<br>on phone] <-->|bot API| tgapi[(Telegram)]
+  subgraph pve[Proxmox VE]
+    subgraph ct[LXC 'hermes' · Debian 13 · unprivileged]
+      gw[Hermes gateway<br>systemd service]
+    end
+  end
+  gw <-->|outbound polling, HTTPS| tgapi
+  gw -->|OpenAI-compatible API<br>LAN only, :1234| lms
+  subgraph pc[Gaming PC · Windows]
+    lms[LM Studio server<br>Gemma 4 12B QAT on GPU]
+  end
+```
+
+| Part | Where | Role |
+|---|---|---|
+| Hermes Agent + gateway | dedicated LXC (Debian 13) | agent runtime, memory, skills, Telegram connector |
+| LM Studio | gaming PC (Ryzen 7 5700X3D, Radeon RX 7900 GRE 16 GB, 32 GB RAM) | serves the model through its OpenAI-compatible endpoint |
+| Model | Gemma 4 12B, QAT (quantization-aware trained 4-bit) | fits fully in 16 GB VRAM with room for context |
+| Telegram bot | Telegram | chat interface from anywhere, no port forwarding |
+
+## Design decisions
+
+- **Separate LXC, not inside the Docker LXC.** The agent can execute commands and edit files; keeping it in its own container limits the blast radius and lets me snapshot/restore it independently.
+- **Inference on the gaming PC, not on the server.** The server has a 2-core CPU and an iGPU — useless for LLMs. The PC's 16 GB GPU runs a 12B model at interactive speed. Trade-off: the agent only answers while the PC is on (accepted; it's a personal assistant, not a 24/7 service).
+- **QAT 4-bit weights** instead of a regular post-training quant: near full-precision quality at ~¼ of the memory.
+- **Telegram via outbound polling:** the gateway connects out to Telegram, so nothing is exposed to the internet and it works behind DS-Lite/CGNAT, same as the website.
+- **Access locked down:** the gateway denies every user that isn't on the allowlist (`TELEGRAM_ALLOWED_USERS`, numeric user ID, not @username). Bot token and allowlist live in `~/.hermes/.env` on the container, never in this repo.
+
+## Setup (summary)
+
+1. **LM Studio (PC):** load the model → Developer tab → start server on port `1234` → enable *Serve on Local Network*. Check from the LXC:
+   ```bash
+   curl -s http://<pc-lan-ip>:1234/v1/models
+   ```
+2. **LXC:** Debian 13 template, unprivileged, onboot. Install Hermes with the official installer, then point it at LM Studio:
+   ```bash
+   hermes model            # → LM Studio / Custom endpoint → http://<pc-lan-ip>:1234/v1
+   hermes -z "Reply exactly HERMES_OK"
+   ```
+3. **Telegram:** create a bot with @BotFather, get my numeric ID from @userinfobot, then:
+   ```bash
+   hermes gateway setup    # select Telegram, paste token + allowed user ID
+   hermes gateway install  # systemd user service
+   loginctl enable-linger "$USER"   # keep it running without a login session
+   ```
+4. Logs: `journalctl --user -u hermes-gateway -f`
+
+See [`config.example.yaml`](config.example.yaml) and [`.env.example`](.env.example) for the non-secret shape of the config.
+
+## Open items
+
+- [ ] Windows Firewall: allow TCP 1234 **only** from the hermes LXC instead of the whole LAN
+- [ ] Give the PC a DHCP reservation so the endpoint IP never changes
+- [ ] Optional: Wake-on-LAN from the agent so it can wake the PC itself
+- [ ] Include the hermes LXC in the nightly Proxmox backup job

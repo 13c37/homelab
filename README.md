@@ -1,10 +1,12 @@
 # homelab
 
-My home server: an old desktop PC turned into a small Proxmox host that runs DNS filtering, media streaming, monitoring, a file share and a public website — without opening a single port on the router.
+My home server: an old desktop PC turned into a small Proxmox host that runs DNS filtering, media streaming, monitoring, a file share, a public website and a private AI agent — without opening a single port on the router.
 
 ## Hardware
 
-A repurposed office desktop: 2-core Intel CPU with integrated GPU (Quick Sync), 16 GB RAM, an SSD for the system and an HDD for media and backups.
+**Server:** a repurposed office desktop: 2-core Intel CPU with integrated GPU (Quick Sync), 16 GB RAM, an SSD for the system and an HDD for media and backups.
+
+**LLM inference:** my gaming PC (Ryzen 7 5700X3D, Radeon RX 7900 GRE 16 GB, 32 GB RAM) runs LM Studio as the model backend for the agent — the server itself has no GPU worth using for that.
 
 ## Architecture
 
@@ -15,8 +17,13 @@ flowchart LR
   lan[LAN clients] -->|DNS :53| adg
   lan -->|SMB| smb
 
+  tgapp[Telegram<br>on phone] <--> tg[(Telegram)]
+
   subgraph pve[Proxmox VE]
     ts
+    subgraph hct[LXC 'hermes' · Debian 13]
+      hermes[Hermes Agent<br>gateway]
+    end
     subgraph ct[Docker LXC · Debian · unprivileged]
       adg[AdGuard Home]
       jf[Jellyfin<br>iGPU transcoding]
@@ -33,6 +40,8 @@ flowchart LR
   adg -->|DNS-over-HTTPS| quad9[(Quad9)]
   hdd[(HDD)] --- jf
   hdd --- smb
+  hermes <-->|outbound polling| tg
+  hermes -->|OpenAI API, LAN| lms[LM Studio<br>on gaming PC]
 ```
 
 ## Services
@@ -45,6 +54,7 @@ flowchart LR
 | [Homepage](stacks/homepage) | Dashboard with links and live status | `:3010`, LAN |
 | [site](stacks/site) | Static website, public via Tailscale Funnel, served by Caddy | Internet (HTTPS) |
 | [Samba](samba/smb.conf) | `media` share for Windows, dedicated user, no guest access | LAN |
+| [Hermes Agent](hermes) | Self-hosted AI agent, local model (Gemma 4 12B QAT) via LM Studio on the gaming PC, chat through a private Telegram bot | Telegram (allowlisted user only) |
 | Proxmox backups | Nightly backup of the Docker LXC to the HDD | — |
 
 ## Layout
@@ -52,6 +62,7 @@ flowchart LR
 ```
 proxmox/docker-lxc.conf LXC definition (unprivileged, nesting, iGPU passthrough, HDD bind mount)
 samba/smb.conf          file share config
+hermes/                 AI agent LXC: setup notes + non-secret config examples
 stacks/<service>/       one docker compose stack per service (/opt/stacks/<service> on the server)
 ```
 
@@ -64,6 +75,7 @@ Runtime data (`config/`, `data/`, `ts-state/`, …) and `.env` files are not par
 - **Host networking** for AdGuard (DNS on port 53 for the whole LAN) and Jellyfin (client auto-discovery); everything else uses normal port mappings.
 - **Public website without port forwarding:** a Tailscale container in userspace mode publishes the site through Tailscale Funnel with automatic HTTPS. The home IP stays hidden, it works behind DS-Lite/CGNAT, and the stack is isolated from the other services.
 - **Media is read-only for Jellyfin**; writes only go through the Samba share.
+- **AI agent in its own LXC, model on the gaming PC:** the agent can run commands, so it's isolated from the Docker services; inference runs on the 16 GB GPU over the LAN instead of on the 2-core server. Details in [hermes/](hermes).
 
 ## Problems I ran into (and fixed)
 
@@ -84,6 +96,7 @@ Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to
 - [ ] Pin image versions instead of `latest`, update via a reviewed process
 - [ ] Internal HTTPS for LAN services through Caddy
 - [ ] Off-site copy of the backups
+- [ ] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
 
 ## Usage
 
