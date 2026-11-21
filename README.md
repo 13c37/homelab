@@ -55,7 +55,7 @@ flowchart LR
 | [site](stacks/site) | Static website, public via Tailscale Funnel, served by Caddy | Internet (HTTPS) |
 | [Samba](samba/smb.conf) | `media` share for Windows, dedicated user, no guest access | LAN |
 | [Hermes Agent](hermes) | Self-hosted AI agent, local model (Gemma 4 12B QAT) via LM Studio on the gaming PC, chat through a private Telegram bot | Telegram (allowlisted user only) |
-| Proxmox backups | Nightly backup of the Docker LXC to the HDD | — |
+| Proxmox backups | Nightly backup of the Docker LXC and the agent LXC to the HDD | — |
 
 ## Layout
 
