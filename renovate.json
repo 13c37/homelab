@@ -3,7 +3,6 @@
   "extends": ["config:recommended"],
   "timezone": "Europe/Berlin",
   "schedule": ["* 0-5 * * 1"],
-  "dependencyDashboard": true,
   "automerge": false,
   "packageRules": [
     {
