@@ -96,7 +96,7 @@ Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to
 - [ ] Pin image versions instead of `latest`, update via a reviewed process
 - [ ] Internal HTTPS for LAN services through Caddy
 - [ ] Off-site copy of the backups
-- [ ] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
+- [x] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
 
 ## Usage
 

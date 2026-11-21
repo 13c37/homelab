@@ -57,7 +57,7 @@ See [`config.example.yaml`](config.example.yaml) and [`.env.example`](.env.examp
 
 ## Open items
 
-- [ ] Windows Firewall: allow TCP 1234 **only** from the hermes LXC instead of the whole LAN
+- [x] Windows Firewall: TCP 1234 allowed **only** from the hermes LXC (Private profile); LM Studio's own broad allow rules disabled
 - [ ] Give the PC a DHCP reservation so the endpoint IP never changes
 - [ ] Optional: Wake-on-LAN from the agent so it can wake the PC itself
 - [ ] Include the hermes LXC in the nightly Proxmox backup job
