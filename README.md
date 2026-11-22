@@ -6,7 +6,7 @@ My home server: an old desktop PC turned into a small Proxmox host that runs DNS
 
 **Server:** a repurposed office desktop: 2-core Intel CPU with integrated GPU (Quick Sync), 16 GB RAM, an SSD for the system and an HDD for media and backups.
 
-**LLM inference:** my gaming PC (Ryzen 7 5700X3D, Radeon RX 7900 GRE 16 GB, 32 GB RAM) runs LM Studio as the model backend for the agent — the server itself has no GPU worth using for that.
+**LLM inference:** my main PC runs LM Studio as the model backend for the agent — the server itself has no GPU worth using for that.
 
 ## Architecture
 
