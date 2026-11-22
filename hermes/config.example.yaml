@@ -1,5 +1,7 @@
-# ~/.hermes/config.yaml (excerpt) — model section only, values are placeholders
+# ~/.hermes/config.yaml (excerpt) — model + timezone, values are placeholders
 model:
   provider: custom                       # or "lmstudio" (first-class provider)
   base_url: http://<pc-lan-ip>:1234/v1   # LM Studio OpenAI-compatible endpoint
   default: <model-id>                    # id as returned by GET /v1/models
+
+timezone: Europe/Berlin                  # cron expressions are read in this timezone

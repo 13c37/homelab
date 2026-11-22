@@ -22,7 +22,7 @@ flowchart LR
 | Part | Where | Role |
 |---|---|---|
 | Hermes Agent + gateway | dedicated LXC (Debian 13) | agent runtime, memory, skills, Telegram connector |
-| LM Studio | gaming PC (Ryzen 7 5700X3D, Radeon RX 7900 GRE 16 GB, 32 GB RAM) | serves the model through its OpenAI-compatible endpoint |
+| LM Studio | my main PC | serves the model through its OpenAI-compatible endpoint |
 | Model | Gemma 4 12B, QAT (quantization-aware trained 4-bit) | fits fully in 16 GB VRAM with room for context |
 | Telegram bot | Telegram | chat interface from anywhere, no port forwarding |
 
@@ -49,22 +49,27 @@ Thinking mode is left **off** for the agent: on a 12B model it multiplies respon
 
 ## Setup (summary)
 
-1. **LM Studio (PC):** load the model → Developer tab → start server on port `1234` → enable *Serve on Local Network*. Check from the LXC:
+1. **LM Studio (PC):** set the model's default **context length to at least 64K** (`65536`). Hermes refuses to run below 64,000 tokens, and just-in-time loading uses the model's default settings. Then start the server on port `1234`, enable *Serve on Local Network*, *Just-in-Time model loading* and *Run LLM server on login*. Check from the LXC:
    ```bash
    curl -s http://<pc-lan-ip>:1234/v1/models
    ```
 2. **LXC:** Debian 13 template, unprivileged, onboot. Install Hermes with the official installer, then point it at LM Studio:
    ```bash
    hermes model            # → LM Studio / Custom endpoint → http://<pc-lan-ip>:1234/v1
+   hermes config set timezone Europe/Berlin   # cron schedules use this
    hermes -z "Reply exactly HERMES_OK"
    ```
 3. **Telegram:** create a bot with @BotFather, get my numeric ID from @userinfobot, then:
    ```bash
    hermes gateway setup    # select Telegram, paste token + allowed user ID
-   hermes gateway install  # systemd user service
-   loginctl enable-linger "$USER"   # keep it running without a login session
+   hermes gateway install  # as root: system service hermes-gateway.service
    ```
-4. Logs: `journalctl --user -u hermes-gateway -f`
+4. Service and logs:
+   ```bash
+   systemctl restart hermes-gateway
+   journalctl -u hermes-gateway -f   # or: hermes logs
+   ```
+5. **Scheduled jobs:** `hermes cron list`, `hermes cron edit <id> --schedule "0 20 * * *"`, `hermes cron run <id>` to test.
 
 See [`config.example.yaml`](config.example.yaml) and [`.env.example`](.env.example) for the non-secret shape of the config.
 
