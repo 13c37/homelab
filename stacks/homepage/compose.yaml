@@ -6,7 +6,7 @@ services:
     ports:
       - "3010:3000"
     environment:
-      - HOMEPAGE_ALLOWED_HOSTS=<server-ip>:3010
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS} # from .env, e.g. <server-ip>:3010
       - PUID=1000
       - PGID=1000
     volumes:

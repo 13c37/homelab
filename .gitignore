@@ -9,3 +9,5 @@ stacks/*/config/
 stacks/*/cache/
 stacks/*/conf/
 stacks/*/work/
+# website content lives only on the server
+stacks/site/www/

@@ -1,0 +1,8 @@
+[Unit]
+Description=Deploy changed homelab stacks from git
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homelab/deploy/deploy.sh

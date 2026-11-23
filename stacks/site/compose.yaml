@@ -4,7 +4,7 @@
 services:
   site-ts:
     image: tailscale/tailscale:v1.104.7
-    hostname: site               # becomes https://site.<tailnet>.ts.net
+    hostname: ${TS_HOSTNAME:-site} # from .env; becomes https://<hostname>.<tailnet>.ts.net
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY} # from .env (never committed), see .env.example
       - TS_STATE_DIR=/var/lib/tailscale

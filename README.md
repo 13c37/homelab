@@ -63,12 +63,13 @@ flowchart LR
 proxmox/docker-lxc.conf LXC definition (unprivileged, nesting, iGPU passthrough, HDD bind mount)
 samba/smb.conf          file share config
 docker/daemon.json      Docker daemon settings inside the LXC (log rotation)
+deploy/                 auto-deploy: script + systemd timer (merge to main = deploy)
 .github/workflows/      CI: secret scan (gitleaks) + compose file validation
 hermes/                 AI agent LXC: setup notes + non-secret config examples
 stacks/<service>/       one docker compose stack per service (/opt/stacks/<service> on the server)
 ```
 
-Runtime data (`config/`, `data/`, `ts-state/`, …) and `.env` files are not part of the repo.
+Runtime data (`config/`, `data/`, `ts-state/`, …), `.env` files and the website content are not part of the repo.
 
 ## Design decisions
 
@@ -101,6 +102,7 @@ Current Windows 11 blocks guest SMB logons; a wrong username was silently mapped
 - [ ] Internal HTTPS for LAN services through Caddy
 - [x] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
 - [x] Docker log rotation, CI secret scan + compose validation, security headers for the site
+- [x] Auto-deploy on merge (GitOps via systemd timer)
 
 **Not doing (accepted risk):** off-site copy of the backups. They live on the same machine, so a dead HDD, theft or fire means losing them together with the original.
 
@@ -114,17 +116,20 @@ pct start <new-id>
 ```
 Restoring under a **new** ID first lets me test a backup without touching the running container (`pct destroy <new-id>` afterwards). Worth repeating every few months — an untested backup is only a guess.
 
-## Usage
+## Deployment (GitOps)
 
-```bash
-cd /opt/stacks/<service>
-docker compose up -d
+The server runs a checkout of this repo at `/opt/homelab` (`/opt/stacks` is a symlink to `stacks/`). A systemd timer ([deploy/](deploy)) checks `main` every 5 minutes and redeploys **only the stacks whose files changed**:
+
+```
+Renovate PR → CI (secret scan + compose validation) → I review & merge → server pulls → docker compose up -d
 ```
 
-**Updates:** every image is pinned to an exact version. [Renovate](renovate.json) checks weekly and opens a pull request per update (patch updates grouped); nothing is merged automatically. After merging a PR, on the server:
-```bash
-cd /opt/stacks/<service>
-git pull            # or copy the changed compose.yaml
-docker compose pull && docker compose up -d
-```
-For the site stack: `cp .env.example .env`, add a Tailscale auth key, `chmod 600 .env`, and enable HTTPS + Funnel in the Tailscale admin console first.
+- Nothing is merged automatically, so the review step stays the gate; merging *is* deploying.
+- `git merge --ff-only`: if a file was edited by hand on the server, the deploy stops instead of overwriting it.
+- A failed stack is retried on the next run; logs: `journalctl -u homelab-deploy`.
+
+Server-specific values (Tailscale auth key, node name, allowed hosts) live in each stack's `.env` (see `.env.example`), the website content in `stacks/site/www/` — both stay on the server only.
+
+**Updates:** every image is pinned to an exact version. [Renovate](renovate.json) checks weekly and opens a pull request per update (patch updates grouped).
+
+**New stack / first start:** `cp .env.example .env`, fill it in, `chmod 600 .env`, `docker compose up -d`. For the site stack, enable HTTPS + Funnel in the Tailscale admin console first.
