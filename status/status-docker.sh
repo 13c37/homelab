@@ -9,7 +9,10 @@ docker ps -a --format '{{.Names}}|{{.Status}}' | sort | while IFS='|' read -r n 
   esac
   echo "$m $n: $s"
 done
-df -P / /media | awk 'NR>1 { p=$5+0; printf "%s disk %s: %s used\n", (p>=80?"⚠️":"✅"), $6, $5 }'
+echo "💾 Devices and drives"
+df -P -B1 / | awk 'function f(b,  v,u,s){ v=b/1073741824; u="GB"; if(v>=1000){v/=1024; u="TB"}
+  s=sprintf(v>=100?"%.0f":(v>=10?"%.1f":"%.2f"), v); sub(/\./, ",", s); return s " " u }
+  NR>1 { p=$5+0; printf "%s Docker LXC (/): %s free of %s\n", (p>=80?"⚠️":"✅"), f($4), f($2) }'
 if systemctl is-failed -q homelab-deploy.service; then
   echo "⚠️ auto-deploy: FAILED (journalctl -u homelab-deploy)"
 else

@@ -10,7 +10,15 @@ for id in $(pct list | awk 'NR>1 {print $1}'); do
     echo "⚠️ backup CT $id: none in the last 24 h"
   fi
 done
-lvs --noheadings -o data_percent pve/data | awk '{ p=$1+0; printf "%s SSD pool: %s%% used\n", (p>=80?"⚠️":"✅"), $1 }'
-df -P /mnt/hdd | awk 'NR>1 { p=$5+0; printf "%s HDD: %s used\n", (p>=80?"⚠️":"✅"), $5 }'
+echo "💾 Devices and drives"
+df -P -B1 / | awk 'function f(b,  v,u,s){ v=b/1073741824; u="GB"; if(v>=1000){v/=1024; u="TB"}
+  s=sprintf(v>=100?"%.0f":(v>=10?"%.1f":"%.2f"), v); sub(/\./, ",", s); return s " " u }
+  NR>1 { p=$5+0; printf "%s Proxmox system (/): %s free of %s\n", (p>=80?"⚠️":"✅"), f($4), f($2) }'
+lvs --noheadings --units b --nosuffix -o lv_size,data_percent pve/data | awk 'function f(b,  v,u,s){ v=b/1073741824; u="GB"; if(v>=1000){v/=1024; u="TB"}
+  s=sprintf(v>=100?"%.0f":(v>=10?"%.1f":"%.2f"), v); sub(/\./, ",", s); return s " " u }
+  { p=$2+0; printf "%s SSD pool (containers): %s free of %s\n", (p>=80?"⚠️":"✅"), f($1*(100-p)/100), f($1) }'
+df -P -B1 /mnt/hdd | awk 'function f(b,  v,u,s){ v=b/1073741824; u="GB"; if(v>=1000){v/=1024; u="TB"}
+  s=sprintf(v>=100?"%.0f":(v>=10?"%.1f":"%.2f"), v); sub(/\./, ",", s); return s " " u }
+  NR>1 { p=$5+0; printf "%s HDD (media + backups): %s free of %s\n", (p>=80?"⚠️":"✅"), f($4), f($2) }'
 n=$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l)
 echo "📦 Proxmox updates pending: $n"
