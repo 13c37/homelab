@@ -4,7 +4,7 @@
     encode zstd gzip
     header {
         Strict-Transport-Security "max-age=31536000"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-r2oUcdDvaHRD/0gT+2yJPaltts4I/OLeowuKn7E0xQU=' 'sha256-Jdc6xnh5Rp2FxsK8v5W5jn8/3EZglVVFnRlujIu5wU0=' 'sha256-MrB24Q+5nIOAfHI4UKtDITmmzzDfTdIVi56nLEZi67E='; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
         X-Content-Type-Options nosniff
         Referrer-Policy no-referrer
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
