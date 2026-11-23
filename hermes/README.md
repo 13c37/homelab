@@ -73,6 +73,14 @@ Thinking mode is left **off** for the agent: on a 12B model it multiplies respon
 
 See [`config.example.yaml`](config.example.yaml) and [`.env.example`](.env.example) for the non-secret shape of the config.
 
+## Daily status report (read-only)
+
+Every evening the agent posts a status report to Telegram: containers and health, disks, SSD thin pool, last night's backups, auto-deploy state, pending OS updates and open Renovate PRs.
+
+- **No LLM involved:** a cron job with `--no-agent` runs [`homelab-report.example.sh`](homelab-report.example.sh), so the report also arrives while the gaming PC is off and can't hallucinate an "all good".
+- **Read-only by construction, not by prompt:** the agent's SSH key is accepted by the Docker LXC and the Proxmox host only with a forced command (`restrict,command="…"` in `authorized_keys`). Whatever the model types, the hosts only ever run [`status/status-docker.sh`](../status/status-docker.sh) / [`status/status-pve.sh`](../status/status-pve.sh).
+- Changes to the servers are never done by the local model; they go through reviewed pull requests.
+
 ## Open items
 
 - [x] Windows Firewall: TCP 1234 allowed **only** from the hermes LXC (Private profile); LM Studio's own broad allow rules disabled

@@ -64,6 +64,7 @@ proxmox/docker-lxc.conf LXC definition (unprivileged, nesting, iGPU passthrough,
 samba/smb.conf          file share config
 docker/daemon.json      Docker daemon settings inside the LXC (log rotation)
 deploy/                 auto-deploy: script + systemd timer (merge to main = deploy)
+status/                 read-only status scripts for the agent's daily report
 .github/workflows/      CI: secret scan (gitleaks) + compose file validation
 hermes/                 AI agent LXC: setup notes + non-secret config examples
 stacks/<service>/       one docker compose stack per service (/opt/stacks/<service> on the server)
