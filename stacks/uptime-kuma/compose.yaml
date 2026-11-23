@@ -1,3 +1,4 @@
+# uptime monitoring for all services incl. the public site
 services:
   uptime-kuma:
     image: louislam/uptime-kuma:2.5.12
