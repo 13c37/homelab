@@ -62,6 +62,8 @@ flowchart LR
 ```
 proxmox/docker-lxc.conf LXC definition (unprivileged, nesting, iGPU passthrough, HDD bind mount)
 samba/smb.conf          file share config
+docker/daemon.json      Docker daemon settings inside the LXC (log rotation)
+.github/workflows/      CI: secret scan (gitleaks) + compose file validation
 hermes/                 AI agent LXC: setup notes + non-secret config examples
 stacks/<service>/       one docker compose stack per service (/opt/stacks/<service> on the server)
 ```
@@ -75,6 +77,7 @@ Runtime data (`config/`, `data/`, `ts-state/`, …) and `.env` files are not par
 - **Host networking** for AdGuard (DNS on port 53 for the whole LAN) and Jellyfin (client auto-discovery); everything else uses normal port mappings.
 - **Public website without port forwarding:** a Tailscale container in userspace mode publishes the site through Tailscale Funnel with automatic HTTPS. The home IP stays hidden, it works behind DS-Lite/CGNAT, and the stack is isolated from the other services.
 - **Pinned image versions + Renovate PRs** instead of `latest`: no surprise breakage from a random `docker compose pull`, every update is reviewed with its changelog and can be rolled back by reverting one commit.
+- **Bounded Docker logs** ([docker/daemon.json](docker/daemon.json)): the default log driver grows without limit and would eventually fill the 30 GB container disk; `local` driver, 3 × 10 MB per container.
 - **Media is read-only for Jellyfin**; writes only go through the Samba share.
 - **AI agent in its own LXC, model on the gaming PC:** the agent can run commands, so it's isolated from the Docker services; inference runs on the 16 GB GPU over the LAN instead of on the 2-core server. Details in [hermes/](hermes).
 
@@ -85,7 +88,7 @@ The LXC inherited the host's resolver, which after installing Tailscale on the h
 *Fix:* pinned the LXC's DNS to Quad9 via `pct set <id> --nameserver …`, restarted Docker. The server no longer depends on its own AdGuard to resolve names.
 
 **2. Windows 11 refused the SMB share** — "organization's security policies block unauthenticated guest access".
-Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to guest (`map to guest = Bad User`).
+Current Windows 11 blocks guest SMB logons; a wrong username was silently mapped to guest (`map to guest = Bad User`).
 *Fix:* proper Samba password for the share user, `map to guest = never`, credentials stored in Windows Credential Manager. No Windows security settings were weakened.
 
 **3. Website unreachable after renaming the node** — Caddy uses `network_mode: service:site-ts`; recreating only the Tailscale container left Caddy attached to the old network namespace.
@@ -97,6 +100,19 @@ Windows 11 24H2 blocks guest SMB logons; a wrong username was silently mapped to
 - [x] Pin image versions instead of `latest`, update via a reviewed process (Renovate)
 - [ ] Internal HTTPS for LAN services through Caddy
 - [x] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
+- [x] Docker log rotation, CI secret scan + compose validation, security headers for the site
+
+**Not doing (accepted risk):** off-site copy of the backups. They live on the same machine, so a dead HDD, theft or fire means losing them together with the original.
+
+## Restore
+
+Backups are Proxmox `vzdump` archives. On the Proxmox host:
+```bash
+pvesm list <backup-storage> --content backup          # find the archive
+pct restore <new-id> <backup-storage>:backup/vzdump-lxc-<id>-<date>.tar.zst --storage local-lvm
+pct start <new-id>
+```
+Restoring under a **new** ID first lets me test a backup without touching the running container (`pct destroy <new-id>` afterwards). Worth repeating every few months — an untested backup is only a guess.
 
 ## Usage
 
