@@ -80,6 +80,7 @@ Runtime data (`config/`, `data/`, `ts-state/`, …), `.env` files and the websit
 - **Public website without port forwarding:** a Tailscale container in userspace mode publishes the site through Tailscale Funnel with automatic HTTPS. The home IP stays hidden, it works behind DS-Lite/CGNAT, and the stack is isolated from the other services.
 - **Pinned image versions + Renovate PRs** instead of `latest`: no surprise breakage from a random `docker compose pull`, every update is reviewed with its changelog and can be rolled back by reverting one commit.
 - **Bounded Docker logs** ([docker/daemon.json](docker/daemon.json)): the default log driver grows without limit and would eventually fill the 30 GB container disk; `local` driver, 3 × 10 MB per container.
+- **Automatic OS security updates in the Docker LXC** (`unattended-upgrades`, Debian + Debian-Security origins only): Docker's own packages and the Proxmox host stay manual, because those updates restart all containers or need a planned reboot.
 - **Media is read-only for Jellyfin**; writes only go through the Samba share.
 - **AI agent in its own LXC, model on the gaming PC:** the agent can run commands, so it's isolated from the Docker services; inference runs on the 16 GB GPU over the LAN instead of on the 2-core server. Details in [hermes/](hermes).
 
