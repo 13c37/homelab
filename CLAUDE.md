@@ -12,7 +12,9 @@ Environment-specific details (IPs, backup job, current inventory) are in `CLAUDE
    - If a snapshot isn't possible, say so and give the latest backup: `pvesm list hdd-backups | grep lxc-<id>`.
 3. **Never without my explicit OK:** reboot/shutdown (host or CT), `pct stop`, deleting volumes/disks/backups/snapshots, `docker volume rm` / `docker system prune`, changes to firewall, network, bridges, DNS, Tailscale.
 4. **SSH keys only.** Never type, store, read out or forward passwords. Don't print secrets (`.env`, `~/.hermes/.env`, `auth.json`, Tailscale keys).
-5. **Git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/Claude attribution. Ask before push.
+5. **Git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/Claude attribution.
+   - **Push without asking** when nothing can go down: docs, `.gitignore`, CI, read-only status scripts, small compose changes to non-critical stacks (homepage, uptime-kuma). Say afterwards what was pushed.
+   - **Ask before push** for anything that can take down the server, DNS or the network: the adguard stack (every redeploy = short LAN DNS outage), the site stack (public site), jellyfin/adguard image bumps, network/firewall/Tailscale, `deploy/`. Never force-push, rewrite history or delete branches without asking.
 6. **Stacks are GitOps.** Change compose files here → push/PR → merge to `main`; CT 100 deploys on its own (`deploy/`, timer every 5 min, `git merge --ff-only`). **Never edit files in `/opt/homelab` on the server**: that breaks the ff-only deploy. Merging to `main` = deploying.
 7. **Site stack:** always `docker compose up -d --force-recreate` (Caddy shares the namespace of the Tailscale sidecar).
 8. **This repo is public:** never commit IPs, hostnames from the LAN, tailnet names or secrets. Those go in `.env` (server) or `CLAUDE.local.md` (here).
