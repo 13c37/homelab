@@ -11,3 +11,7 @@ stacks/*/conf/
 stacks/*/work/
 # website content lives only on the server
 stacks/site/www/
+# local backups of runtime config (e.g. before an image upgrade)
+stacks/*/conf.bak-*/
+# private notes for Claude Code (IPs, hostnames) - never public
+CLAUDE.local.md
