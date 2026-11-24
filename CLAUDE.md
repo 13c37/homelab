@@ -6,10 +6,10 @@ Environment-specific details (IPs, backup job, current inventory) are in `CLAUDE
 ## Rules
 
 1. **Read-only by default.** Inspect freely (`pct list`, `pct config`, `docker ps`, logs, `df`, …). Ask before every change, however small.
-2. **Snapshot before changing a CT:** `pct snapshot <id> pre-<task>` (CT rootfs are on `local-lvm` = LVM-thin, so snapshots work).
-   - The bind mount `mp0` (media on the HDD) is **not** in the snapshot. Say so if the change touches media.
+2. **Snapshot before changing a CT:** `pct snapshot <id> pre-<task>` (CT rootfs are on `local-lvm` = LVM-thin).
+   - **CT 100 cannot be snapshotted** (Proxmox doesn't support snapshots with the host bind mount `mp0`). Take a fresh backup instead: `vzdump 100 --storage hdd-backups --mode snapshot --compress zstd` (no downtime, ~3.5 GB, ~2 min).
    - Snapshots use the small SSD thin pool. Delete them after the task (`pct delsnapshot <id> pre-<task>`), but only after I confirm.
-   - If a snapshot isn't possible, say so and give the latest backup: `pvesm list hdd-backups | grep lxc-<id>`.
+   - If neither is possible, say so and give the latest backup: `pvesm list hdd-backups | grep lxc-<id>`.
 3. **Never without my explicit OK:** reboot/shutdown (host or CT), `pct stop`, deleting volumes/disks/backups/snapshots, `docker volume rm` / `docker system prune`, changes to firewall, network, bridges, DNS, Tailscale.
 4. **SSH keys only.** Never type, store, read out or forward passwords. Don't print secrets (`.env`, `~/.hermes/.env`, `auth.json`, Tailscale keys).
 5. **Git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/Claude attribution.
