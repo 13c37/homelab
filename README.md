@@ -1,14 +1,14 @@
 # homelab
 
-My home server: an old desktop PC turned into a small Proxmox host that runs DNS filtering, media streaming, monitoring, a file share, a public website and a private AI agent — without opening a single port on the router.
+my home server: an old desktop pc turned into a small proxmox host that runs dns filtering, media streaming, monitoring, a file share, a public website and a private ai agent — without opening a single port on the router.
 
-## Hardware
+## hardware
 
-**Server:** a repurposed office desktop: 2-core Intel CPU with integrated GPU (Quick Sync), 16 GB RAM, an SSD for the system and an HDD for media and backups.
+**server:** a repurposed office desktop: 2-core intel cpu with integrated gpu (quick sync), 16 gb ram, an ssd for the system and an hdd for media and backups.
 
-**LLM inference:** my main PC runs LM Studio as the model backend for the agent — the server itself has no GPU worth using for that.
+**llm inference:** my main pc runs lm studio as the model backend for the agent — the server itself has no gpu worth using for that.
 
-## Architecture
+## architecture
 
 ```mermaid
 flowchart LR
@@ -44,20 +44,20 @@ flowchart LR
   hermes -->|OpenAI API, LAN| lms[LM Studio<br>on gaming PC]
 ```
 
-## Services
+## services
 
-| Service | Purpose | Access |
+| service | purpose | access |
 |---|---|---|
-| [AdGuard Home](stacks/adguard) | Network-wide ad/tracker/malware blocking; upstream Quad9 via DNS-over-HTTPS | LAN DNS (`:53`), web UI LAN-only |
-| [Jellyfin](stacks/jellyfin) | Media server with Intel Quick Sync hardware transcoding | LAN + Tailscale |
-| [Uptime Kuma](stacks/uptime-kuma) | Uptime monitoring of all services incl. the public site | `:3001`, LAN + Tailscale |
-| [Homepage](stacks/homepage) | Dashboard with links and live status | `:3010`, LAN |
-| [site](stacks/site) | Static website, public via Tailscale Funnel, served by Caddy | Internet (HTTPS) |
-| [Samba](samba/smb.conf) | `media` share for Windows, dedicated user, no guest access | LAN |
-| [Hermes Agent](hermes) | Self-hosted AI agent, local model (Gemma 4 12B QAT) via LM Studio on the gaming PC, chat through a private Telegram bot | Telegram (allowlisted user only) |
-| Proxmox backups | Nightly backup of the Docker LXC and the agent LXC to the HDD | — |
+| [adguard home](stacks/adguard) | network-wide ad/tracker/malware blocking; upstream quad9 via dns-over-https | lan dns (`:53`), web ui lan-only |
+| [jellyfin](stacks/jellyfin) | media server with intel quick sync hardware transcoding | lan + tailscale |
+| [uptime kuma](stacks/uptime-kuma) | uptime monitoring of all services incl. the public site | `:3001`, lan + tailscale |
+| [homepage](stacks/homepage) | dashboard with links and live status | `:3010`, lan |
+| [site](stacks/site) | static website, public via tailscale funnel, served by caddy | internet (https) |
+| [samba](samba/smb.conf) | `media` share for windows, dedicated user, no guest access | lan |
+| [hermes agent](hermes) | self-hosted ai agent, local model (gemma 4 12b qat) via lm studio on the gaming pc, chat through a private telegram bot | telegram (allowlisted user only) |
+| proxmox backups | nightly backup of the docker lxc and the agent lxc to the hdd | — |
 
-## Layout
+## layout
 
 ```
 proxmox/docker-lxc.conf LXC definition (unprivileged, nesting, iGPU passthrough, HDD bind mount)
@@ -70,68 +70,68 @@ hermes/                 AI agent LXC: setup notes + non-secret config examples
 stacks/<service>/       one docker compose stack per service (/opt/stacks/<service> on the server)
 ```
 
-Runtime data (`config/`, `data/`, `ts-state/`, …), `.env` files and the website content are not part of the repo.
+runtime data (`config/`, `data/`, `ts-state/`, …), `.env` files and the website content are not part of the repo.
 
-## Design decisions
+## design decisions
 
-- **One unprivileged LXC with Docker** instead of a VM per service: far less RAM overhead on a 2-core CPU; `nesting=1` + `keyctl=1` make Docker work inside the container.
-- **iGPU passthrough into the LXC** (`dev0: /dev/dri/renderD128`) and `group_add: 992` in the Jellyfin stack → hardware transcoding instead of maxing out the CPU.
-- **Host networking** for AdGuard (DNS on port 53 for the whole LAN) and Jellyfin (client auto-discovery); everything else uses normal port mappings.
-- **Public website without port forwarding:** a Tailscale container in userspace mode publishes the site through Tailscale Funnel with automatic HTTPS. The home IP stays hidden, it works behind DS-Lite/CGNAT, and the stack is isolated from the other services.
-- **Pinned image versions + Renovate PRs** instead of `latest`: no surprise breakage from a random `docker compose pull`, every update is reviewed with its changelog and can be rolled back by reverting one commit.
-- **Bounded Docker logs** ([docker/daemon.json](docker/daemon.json)): the default log driver grows without limit and would eventually fill the 30 GB container disk; `local` driver, 3 × 10 MB per container.
-- **Automatic OS security updates in the Docker LXC** (`unattended-upgrades`, Debian + Debian-Security origins only): Docker's own packages and the Proxmox host stay manual, because those updates restart all containers or need a planned reboot.
-- **Media is read-only for Jellyfin**; writes only go through the Samba share.
-- **AI agent in its own LXC, model on the gaming PC:** the agent can run commands, so it's isolated from the Docker services; inference runs on the 16 GB GPU over the LAN instead of on the 2-core server. Details in [hermes/](hermes).
+- **one unprivileged lxc with docker** instead of a vm per service: far less ram overhead on a 2-core cpu; `nesting=1` + `keyctl=1` make docker work inside the container.
+- **igpu passthrough into the lxc** (`dev0: /dev/dri/renderD128`) and `group_add: 992` in the jellyfin stack → hardware transcoding instead of maxing out the cpu.
+- **host networking** for adguard (dns on port 53 for the whole lan) and jellyfin (client auto-discovery); everything else uses normal port mappings.
+- **public website without port forwarding:** a tailscale container in userspace mode publishes the site through tailscale funnel with automatic https. the home ip stays hidden, it works behind ds-lite/cgnat, and the stack is isolated from the other services.
+- **pinned image versions + renovate prs** instead of `latest`: no surprise breakage from a random `docker compose pull`, every update is reviewed with its changelog and can be rolled back by reverting one commit.
+- **bounded docker logs** ([docker/daemon.json](docker/daemon.json)): the default log driver grows without limit and would eventually fill the 30 gb container disk; `local` driver, 3 × 10 mb per container.
+- **automatic os security updates in the docker lxc** (`unattended-upgrades`, debian + debian-security origins only): docker's own packages and the proxmox host stay manual, because those updates restart all containers or need a planned reboot.
+- **media is read-only for jellyfin**; writes only go through the samba share.
+- **ai agent in its own lxc, model on the gaming pc:** the agent can run commands, so it's isolated from the docker services; inference runs on the 16 gb gpu over the lan instead of on the 2-core server. details in [hermes/](hermes).
 
-## Problems I ran into (and fixed)
+## problems i ran into (and fixed)
 
-**1. DNS loop in the LXC** — Docker could not pull images (`lookup registry-1.docker.io: i/o timeout`).
-The LXC inherited the host's resolver, which after installing Tailscale on the host was MagicDNS (`100.100.100.100`) — only reachable on the host itself.
-*Fix:* pinned the LXC's DNS to Quad9 via `pct set <id> --nameserver …`, restarted Docker. The server no longer depends on its own AdGuard to resolve names.
+**1. dns loop in the lxc** — docker could not pull images (`lookup registry-1.docker.io: i/o timeout`).
+the lxc inherited the host's resolver, which after installing tailscale on the host was magicdns (`100.100.100.100`) — only reachable on the host itself.
+*fix:* pinned the lxc's dns to quad9 via `pct set <id> --nameserver …`, restarted docker. the server no longer depends on its own adguard to resolve names.
 
-**2. Windows 11 refused the SMB share** — "organization's security policies block unauthenticated guest access".
-Current Windows 11 blocks guest SMB logons; a wrong username was silently mapped to guest (`map to guest = Bad User`).
-*Fix:* proper Samba password for the share user, `map to guest = never`, credentials stored in Windows Credential Manager. No Windows security settings were weakened.
+**2. windows 11 refused the smb share** — "organization's security policies block unauthenticated guest access".
+current windows 11 blocks guest smb logons; a wrong username was silently mapped to guest (`map to guest = Bad User`).
+*fix:* proper samba password for the share user, `map to guest = never`, credentials stored in windows credential manager. no windows security settings were weakened.
 
-**3. Website unreachable after renaming the node** — Caddy uses `network_mode: service:site-ts`; recreating only the Tailscale container left Caddy attached to the old network namespace.
-*Fix:* always recreate the whole stack (`docker compose up -d --force-recreate`).
+**3. website unreachable after renaming the node** — caddy uses `network_mode: service:site-ts`; recreating only the tailscale container left caddy attached to the old network namespace.
+*fix:* always recreate the whole stack (`docker compose up -d --force-recreate`).
 
-## Roadmap
+## roadmap
 
-- [ ] Vaultwarden (password manager)
-- [x] Pin image versions instead of `latest`, update via a reviewed process (Renovate)
-- [ ] Internal HTTPS for LAN services through Caddy
-- [x] Restrict the LM Studio port on the PC to the agent LXC only (Windows Firewall)
-- [x] Docker log rotation, CI secret scan + compose validation, security headers for the site
-- [x] Auto-deploy on merge (GitOps via systemd timer)
+- [ ] vaultwarden (password manager)
+- [x] pin image versions instead of `latest`, update via a reviewed process (renovate)
+- [ ] internal https for lan services through caddy
+- [x] restrict the lm studio port on the pc to the agent lxc only (windows firewall)
+- [x] docker log rotation, ci secret scan + compose validation, security headers for the site
+- [x] auto-deploy on merge (gitops via systemd timer)
 
-**Not doing (accepted risk):** off-site copy of the backups. They live on the same machine, so a dead HDD, theft or fire means losing them together with the original.
+**not doing (accepted risk):** off-site copy of the backups. they live on the same machine, so a dead hdd, theft or fire means losing them together with the original.
 
-## Restore
+## restore
 
-Backups are Proxmox `vzdump` archives. On the Proxmox host:
+backups are proxmox `vzdump` archives. on the proxmox host:
 ```bash
 pvesm list <backup-storage> --content backup          # find the archive
 pct restore <new-id> <backup-storage>:backup/vzdump-lxc-<id>-<date>.tar.zst --storage local-lvm
 pct start <new-id>
 ```
-Restoring under a **new** ID first lets me test a backup without touching the running container (`pct destroy <new-id>` afterwards). Worth repeating every few months — an untested backup is only a guess.
+restoring under a **new** id first lets me test a backup without touching the running container (`pct destroy <new-id>` afterwards). worth repeating every few months — an untested backup is only a guess.
 
-## Deployment (GitOps)
+## deployment (gitops)
 
-The server runs a checkout of this repo at `/opt/homelab` (`/opt/stacks` is a symlink to `stacks/`). A systemd timer ([deploy/](deploy)) checks `main` every 5 minutes and redeploys **only the stacks whose files changed**:
+the server runs a checkout of this repo at `/opt/homelab` (`/opt/stacks` is a symlink to `stacks/`). a systemd timer ([deploy/](deploy)) checks `main` every 5 minutes and redeploys **only the stacks whose files changed**:
 
 ```
 Renovate PR → CI (secret scan + compose validation) → I review & merge → server pulls → docker compose up -d
 ```
 
-- Nothing is merged automatically, so the review step stays the gate; merging *is* deploying.
+- nothing is merged automatically, so the review step stays the gate; merging *is* deploying.
 - `git merge --ff-only`: if a file was edited by hand on the server, the deploy stops instead of overwriting it.
-- A failed stack is retried on the next run; logs: `journalctl -u homelab-deploy`.
+- a failed stack is retried on the next run; logs: `journalctl -u homelab-deploy`.
 
-Server-specific values (Tailscale auth key, node name, allowed hosts) live in each stack's `.env` (see `.env.example`), the website content in `stacks/site/www/` — both stay on the server only.
+server-specific values (tailscale auth key, node name, allowed hosts) live in each stack's `.env` (see `.env.example`), the website content in `stacks/site/www/` — both stay on the server only.
 
-**Updates:** every image is pinned to an exact version. [Renovate](renovate.json) checks weekly and opens a pull request per update (patch updates grouped).
+**updates:** every image is pinned to an exact version. [renovate](renovate.json) checks weekly and opens a pull request per update (patch updates grouped).
 
-**New stack / first start:** `cp .env.example .env`, fill it in, `chmod 600 .env`, `docker compose up -d`. For the site stack, enable HTTPS + Funnel in the Tailscale admin console first.
+**new stack / first start:** `cp .env.example .env`, fill it in, `chmod 600 .env`, `docker compose up -d`. for the site stack, enable https + funnel in the tailscale admin console first.
