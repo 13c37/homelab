@@ -1,39 +1,46 @@
-# Homelab: instructions for Claude Code
+# homelab: instructions for claude code
 
-This repo is the source of truth for my Proxmox homelab. Architecture, design decisions and restore steps are in [README.md](README.md); the agent LXC is described in [hermes/README.md](hermes/README.md).
-Environment-specific details (IPs, backup job, current inventory) are in `CLAUDE.local.md` (gitignored, local only).
+this repo is the source of truth for my proxmox homelab. architecture, design decisions and restore steps are in [README.md](README.md); the agent lxc is described in [hermes/README.md](hermes/README.md).
+environment-specific details (ips, backup job, current inventory) are in `CLAUDE.local.md` (gitignored, local only).
 
-## Rules
+## rules
 
-1. **Read-only by default.** Inspect freely (`pct list`, `pct config`, `docker ps`, logs, `df`, …). Ask before every change, however small.
-2. **Snapshot before changing a CT:** `pct snapshot <id> pre-<task>` (CT rootfs are on `local-lvm` = LVM-thin).
-   - **CT 100 cannot be snapshotted** (Proxmox doesn't support snapshots with the host bind mount `mp0`). Take a fresh backup instead: `vzdump 100 --storage hdd-backups --mode snapshot --compress zstd` (no downtime, ~3.5 GB, ~2 min).
-   - Snapshots use the small SSD thin pool. Delete them after the task (`pct delsnapshot <id> pre-<task>`), but only after I confirm.
-   - If neither is possible, say so and give the latest backup: `pvesm list hdd-backups | grep lxc-<id>`.
-3. **Never without my explicit OK:** reboot/shutdown (host or CT), `pct stop`, deleting volumes/disks/backups/snapshots, `docker volume rm` / `docker system prune`, changes to firewall, network, bridges, DNS, Tailscale.
-4. **SSH keys only.** Never type, store, read out or forward passwords. Don't print secrets (`.env`, `~/.hermes/.env`, `auth.json`, Tailscale keys).
-5. **Git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/Claude attribution.
-   - **Push without asking** when nothing can go down: docs, `.gitignore`, CI, read-only status scripts, small compose changes to non-critical stacks (homepage, uptime-kuma). Say afterwards what was pushed.
-   - **Ask before push** for anything that can take down the server, DNS or the network: the adguard stack (every redeploy = short LAN DNS outage), the site stack (public site), jellyfin/adguard image bumps, network/firewall/Tailscale, `deploy/`. Never force-push, rewrite history or delete branches without asking.
-6. **Stacks are GitOps.** Change compose files here → push/PR → merge to `main`; CT 100 deploys on its own (`deploy/`, timer every 5 min, `git merge --ff-only`). **Never edit files in `/opt/homelab` on the server**: that breaks the ff-only deploy. Merging to `main` = deploying.
-7. **Site stack:** always `docker compose up -d --force-recreate` (Caddy shares the namespace of the Tailscale sidecar).
-8. **This repo is public:** never commit IPs, hostnames from the LAN, tailnet names or secrets. Those go in `.env` (server) or `CLAUDE.local.md` (here).
+1. **read-only by default.** inspect freely (`pct list`, `pct config`, `docker ps`, logs, `df`, …). ask before every change, however small.
+2. **snapshot before changing a ct:** `pct snapshot <id> pre-<task>` (ct rootfs are on `local-lvm` = lvm-thin).
+   - **ct 100 cannot be snapshotted** (proxmox doesn't support snapshots with the host bind mount `mp0`). take a fresh backup instead: `vzdump 100 --storage hdd-backups --mode snapshot --compress zstd` (no downtime, ~3.5 gb, ~2 min).
+   - snapshots use the small ssd thin pool. delete them after the task (`pct delsnapshot <id> pre-<task>`), but only after i confirm.
+   - if neither is possible, say so and give the latest backup: `pvesm list hdd-backups | grep lxc-<id>`.
+3. **never without my explicit ok:** reboot/shutdown (host or ct), `pct stop`, deleting volumes/disks/backups/snapshots, `docker volume rm` / `docker system prune`, changes to firewall, network, bridges, dns, tailscale.
+4. **ssh keys only.** never type, store, read out or forward passwords. don't print secrets (`.env`, `~/.hermes/.env`, `auth.json`, tailscale keys).
+5. **git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/claude attribution.
+   - **push without asking** when nothing can go down: docs, `.gitignore`, ci, read-only status scripts, small compose changes to non-critical stacks (homepage, uptime-kuma). say afterwards what was pushed.
+   - **ask before push** for anything that can take down the server, dns or the network: the adguard stack (every redeploy = short lan dns outage), the site stack (public site), jellyfin/adguard image bumps, network/firewall/tailscale, `deploy/`. never force-push, rewrite history or delete branches without asking.
+6. **stacks are gitops.** change compose files here → push/pr → merge to `main`; ct 100 deploys on its own (`deploy/`, timer every 5 min, `git merge --ff-only`). **never edit files in `/opt/homelab` on the server**: that breaks the ff-only deploy. merging to `main` = deploying.
+7. **site stack:** always `docker compose up -d --force-recreate` (caddy shares the namespace of the tailscale sidecar).
+8. **this repo is public:** never commit ips, hostnames from the lan, tailnet names or secrets. those go in `.env` (server) or `CLAUDE.local.md` (here).
 
-## Access
+## writing style: lowercase only
 
-| Target | Command |
+everything you write in this repo is lowercase: commit messages, pr titles and bodies, issue and review comments, readmes and other docs, headings, changelog entries.
+- this includes names and acronyms: proxmox, docker, github, dns, lxc, ci, pr.
+- keep the original case only where changing it would break something: code, identifiers (`homelab-deploy`), file names and paths, commands, env vars, urls, and anything inside `backticks` or code blocks.
+- commits: conventional commits, lowercase subject, e.g. `fix(site): recreate caddy with the ts sidecar`.
+
+## access
+
+| target | command |
 |---|---|
-| Proxmox host | `ssh pve` (root) |
-| CT 100 `docker` | `ssh pve 'pct exec 100 -- <cmd>'` |
-| CT 101 `hermes` | `ssh pve 'pct exec 101 -- <cmd>'` |
+| proxmox host | `ssh pve` (root) |
+| ct 100 `docker` | `ssh pve 'pct exec 100 -- <cmd>'` |
+| ct 101 `hermes` | `ssh pve 'pct exec 101 -- <cmd>'` |
 
-## Layout on the server
+## layout on the server
 
-- CT 100: repo checkout at `/opt/homelab`, `/opt/stacks` → `/opt/homelab/stacks`. Runtime data (`config/`, `data/`, `conf/`, `work/`, `ts-state/`, `www/`) and `.env` live only on the server.
-- Deploy logs: `journalctl -u homelab-deploy` (CT 100). Agent logs: `journalctl -u hermes-gateway` (CT 101).
-- Backups: vzdump on `hdd-backups` (`/mnt/hdd/backups/dump`), see `/etc/pve/jobs.cfg`.
+- ct 100: repo checkout at `/opt/homelab`, `/opt/stacks` → `/opt/homelab/stacks`. runtime data (`config/`, `data/`, `conf/`, `work/`, `ts-state/`, `www/`) and `.env` live only on the server.
+- deploy logs: `journalctl -u homelab-deploy` (ct 100). agent logs: `journalctl -u hermes-gateway` (ct 101).
+- backups: vzdump on `hdd-backups` (`/mnt/hdd/backups/dump`), see `/etc/pve/jobs.cfg`.
 
-## Quick status
+## quick status
 
 ```bash
 ssh pve 'pveversion; pct list; pvesm status; pct exec 100 -- docker ps -a'
