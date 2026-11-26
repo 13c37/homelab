@@ -38,12 +38,19 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
+    # tried in order. the tv client still gets a 403 from this ip, so more playback
+    # clients follow (ios was fixed upstream in 6579cdf). web stays before ios:
+    # search comes back empty otherwise (upstream #250).
     clients:
       - "TV" # playback only, needs oauth
-      - "TVHTML5_SIMPLY"
-      - "ANDROID_MUSIC"
       - "MUSIC"
       - "WEB"
+      - "IOS"
+      - "MWEB"
+      - "WEBEMBEDDED"
+      - "ANDROID_VR"
+      - "TVHTML5_SIMPLY"
+      - "ANDROID_MUSIC"
 metrics:
   prometheus:
     enabled: false
