@@ -1,0 +1,44 @@
+services:
+  # audio node (lavalink v4), only reachable on the internal docker network
+  lavalink:
+    container_name: lavamusic-lavalink
+    image: ghcr.io/lavalink-devs/lavalink:4
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx1G
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:?set LAVALINK_PASSWORD in .env}
+    volumes:
+      - ./Lavalink/application.yml:/opt/Lavalink/application.yml
+      # persist plugins between restarts (user/group 322, not committed)
+      - ./data/plugins/:/opt/Lavalink/plugins/
+    networks:
+      - lavalink
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $$LAVALINK_SERVER_PASSWORD\" http://localhost:2333/version"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # bot (lavamusic, unmodified upstream image)
+  lavamusic:
+    container_name: lavamusic
+    image: ghcr.io/bongodevs/lavamusic:main
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - 'NODES=[{"id":"local","host":"lavalink","port":2333,"authorization":"${LAVALINK_PASSWORD:?set LAVALINK_PASSWORD in .env}","retryAmount":5,"retryDelay":60000,"secure":false}]'
+      - DATABASE_URL=file:./lavamusic-pgdata
+    volumes:
+      - ./data/lavamusic-pgdata:/app/lavamusic-pgdata    # bot database (not committed)
+    depends_on:
+      lavalink:
+        condition: service_healthy
+    networks:
+      - lavalink
+
+networks:
+  lavalink:
+    name: lavalink
