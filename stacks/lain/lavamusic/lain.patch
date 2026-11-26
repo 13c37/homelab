@@ -1,0 +1,220 @@
+diff --git a/src/LavaClient.ts b/src/LavaClient.ts
+index 54d0b23c..75fd3268 100644
+--- a/src/LavaClient.ts
++++ b/src/LavaClient.ts
+@@ -1,3 +1,4 @@
++import "./lain";
+ import { type ClientOptions, GatewayIntentBits, Options, Sweepers } from "discord.js";
+ import { env } from "./env";
+ import Lavamusic from "./structures/Lavamusic";
+diff --git a/src/commands/info/Help.ts b/src/commands/info/Help.ts
+index 99ff8602..f2c0df42 100644
+--- a/src/commands/info/Help.ts
++++ b/src/commands/info/Help.ts
+@@ -42,7 +42,8 @@ export default class Help extends Command {
+ 	public async run(client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
+ 		const embed = this.client.embed();
+ 		const guild = await client.db.get(ctx.guild.id);
+-		const commands = this.client.commands.filter((cmd) => cmd.category !== "dev");
++		const hidden = ["dev", "filters", "playlist"];
++		const commands = this.client.commands.filter((cmd) => !hidden.includes(cmd.category));
+ 		const categories = [...new Set(commands.map((cmd) => cmd.category))];
+ 
+ 		if (args[0]) {
+diff --git a/src/commands/music/Leave.ts b/src/commands/music/Leave.ts
+index 8dcaf58c..53cf5d0b 100644
+--- a/src/commands/music/Leave.ts
++++ b/src/commands/music/Leave.ts
+@@ -12,7 +12,7 @@ export default class Leave extends Command {
+ 				usage: "leave",
+ 			},
+ 			category: "music",
+-			aliases: ["l"],
++			aliases: ["l", "quit", "dc", "bye", "disconnect"],
+ 			cooldown: 3,
+ 			args: false,
+ 			vote: false,
+diff --git a/src/commands/music/Seek.ts b/src/commands/music/Seek.ts
+index df9533b4..85c7d008 100644
+--- a/src/commands/music/Seek.ts
++++ b/src/commands/music/Seek.ts
+@@ -12,7 +12,7 @@ export default class Seek extends Command {
+ 				usage: "seek <duration>",
+ 			},
+ 			category: "music",
+-			aliases: ["s"],
++			aliases: [],
+ 			cooldown: 3,
+ 			args: true,
+ 			vote: false,
+diff --git a/src/commands/music/Skip.ts b/src/commands/music/Skip.ts
+index 1da191d2..0a0a1d9f 100644
+--- a/src/commands/music/Skip.ts
++++ b/src/commands/music/Skip.ts
+@@ -12,7 +12,7 @@ export default class Skip extends Command {
+ 				usage: "skip",
+ 			},
+ 			category: "music",
+-			aliases: ["sk"],
++			aliases: ["sk", "s"],
+ 			cooldown: 3,
+ 			args: false,
+ 			vote: true,
+diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
+index 7a3732e7..00ca70eb 100644
+--- a/src/events/client/MessageCreate.ts
++++ b/src/events/client/MessageCreate.ts
+@@ -48,7 +48,8 @@ export default class MessageCreate extends Event {
+ 
+ 		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+ 		const prefixRegex = new RegExp(
+-			`^(<@!?${this.client.user?.id}>|${escapeRegex(guild.prefix)})\\s*`,
++			`^(<@!?${this.client.user?.id}>|${escapeRegex(guild.prefix)}|${escapeRegex(this.client.env.PREFIX)})\\s*`,
++			"i",
+ 		);
+ 		if (!prefixRegex.test(message.content)) return;
+ 		const match = message.content.match(prefixRegex);
+diff --git a/src/events/player/TrackStart.ts b/src/events/player/TrackStart.ts
+index 0e77103f..8b787ed6 100644
+--- a/src/events/player/TrackStart.ts
++++ b/src/events/player/TrackStart.ts
+@@ -41,7 +41,7 @@ export default class TrackStart extends Event {
+ 			await this.client.utils.setVoiceStatus(
+ 				this.client,
+ 				player.voiceChannelId,
+-				`♫ • ${track.info.title}`,
++				`♫ ${track.info.title.toLowerCase()}`,
+ 			);
+ 		}
+ 
+@@ -72,8 +72,13 @@ export default class TrackStart extends Event {
+ 			}
+ 		} else {
+ 			const message = await channel.send({
+-				embeds: [embed],
+-				components: [createButtonRow(player)],
++				content: t("player:trackStart.line", {
++					lng: locale,
++					title: track.info.title,
++					uri: track.info.uri,
++					author: track.info.author,
++					duration: track.info.isStream ? "live" : this.client.utils.formatTime(track.info.duration),
++				}),
+ 			});
+ 
+ 			player.set("messageId", message.id);
+diff --git a/src/lain/index.ts b/src/lain/index.ts
+new file mode 100644
+index 00000000..5d7bc796
+--- /dev/null
++++ b/src/lain/index.ts
+@@ -0,0 +1,21 @@
++// lain: every outgoing message (channel.send, reply, edit, interaction reply/edit/
++// followUp, webhooks) goes through MessagePayload.resolveBody, so one hook makes
++// the whole bot text-only and lowercase.
++import { MessageFlags, MessageFlagsBitField, MessagePayload } from "discord.js";
++import { textify } from "./text";
++
++const resolveBody = MessagePayload.prototype.resolveBody;
++
++MessagePayload.prototype.resolveBody = function (this: MessagePayload) {
++	const self = this as any;
++	const options = textify(self.options ?? {});
++	if (options.flags != null) {
++		const flags = new MessageFlagsBitField(options.flags);
++		if (flags.has(MessageFlags.IsComponentsV2)) {
++			flags.remove(MessageFlags.IsComponentsV2);
++			options.flags = flags.bitfield || undefined;
++		}
++	}
++	self.options = options;
++	return resolveBody.call(this);
++};
+diff --git a/src/lain/text.ts b/src/lain/text.ts
+new file mode 100644
+index 00000000..91b05f1a
+--- /dev/null
++++ b/src/lain/text.ts
+@@ -0,0 +1,82 @@
++// lain: turn embeds and v2 components into one quiet lowercase text message.
++// pure functions, no discord.js import, so they can be tested on their own.
++
++const MAX = 2000;
++const NBSP_NAMES = new Set(["", "\u200b", "\u200e"]);
++
++// pieces of text that must keep their case: code, discord tokens (<@id>, <#id>, <t:..>)
++// and urls. custom emojis are dropped.
++const TOKEN =
++	/(```[\s\S]*?```|`[^`\n]*`|<a?:\w+:\d+>|<[^<>\s]+>|https?:\/\/[^\s<>()]+(?:\([^\s<>()]*\)[^\s<>()]*)*)/g;
++
++export function quiet(text: string): string {
++	return text
++		.split(TOKEN)
++		.map((part, i) => {
++			if (i % 2 === 0) return part.toLowerCase();
++			if (/^<a?:\w+:\d+>$/.test(part)) return "";
++			// bare and masked links get <> so discord shows no preview card
++			if (/^https?:\/\//.test(part)) return `<${part}>`;
++			return part;
++		})
++		.join("")
++		.replace(/[ \t]+\n/g, "\n")
++		.replace(/^[ \t]+|[ \t]+$/g, "")
++		.replace(/\n{3,}/g, "\n\n");
++}
++
++const plain = (x: any): any => (x && typeof x.toJSON === "function" ? x.toJSON() : x);
++
++export function embedText(embed: any): string {
++	const e = plain(embed) ?? {};
++	const lines: string[] = [];
++	if (e.author?.name) lines.push(e.author.name);
++	if (e.title) lines.push(e.url ? `[${e.title}](${e.url})` : e.title);
++	if (e.description) lines.push(e.description);
++	for (const f of e.fields ?? []) {
++		const name = String(f.name ?? "").trim();
++		lines.push(NBSP_NAMES.has(name) ? f.value : `${name}: ${f.value}`);
++	}
++	if (e.footer?.text) lines.push(`-# ${e.footer.text}`);
++	return lines.filter(Boolean).join("\n");
++}
++
++// components v2: text display (10), section (9), container (17). everything else
++// (buttons, menus, media, separators) is dropped.
++export function componentText(components: any[]): string {
++	const out: string[] = [];
++	const walk = (list: any[]) => {
++		for (const raw of list ?? []) {
++			const c = plain(raw);
++			if (!c) continue;
++			if (c.type === 10 && c.content) out.push(c.content);
++			else if (c.type === 9 || c.type === 17) walk(c.components);
++		}
++	};
++	walk(components);
++	return out.join("\n");
++}
++
++/** returns new message options: text only, lowercase, no embeds, no components. */
++export function textify(options: Record<string, any>): Record<string, any> {
++	const touchesBody =
++		options.content != null || options.embeds !== undefined || options.components !== undefined;
++	if (!touchesBody) return options;
++
++	const parts: string[] = [];
++	if (typeof options.content === "string" && options.content) parts.push(options.content);
++	for (const e of options.embeds ?? []) parts.push(embedText(e));
++	parts.push(componentText(options.components ?? []));
++
++	let content = quiet(parts.filter(Boolean).join("\n"));
++	if (content.length > MAX) content = `${content.slice(0, MAX - 1)}…`;
++
++	const out: Record<string, any> = { ...options };
++	if (options.embeds !== undefined) out.embeds = [];
++	if (options.components !== undefined) out.components = [];
++	if (content) out.content = content;
++	else if ((options.embeds?.length || options.components?.length) && !options.files?.length) {
++		out.content = "…"; // discord rejects empty messages
++	}
++	return out;
++}

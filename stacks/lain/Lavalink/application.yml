@@ -34,7 +34,7 @@ plugins:
     remoteCipher:
       url: "http://yt-cipher:8001"
       password: ""
-      userAgent: "tanya"
+      userAgent: "lain"
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true

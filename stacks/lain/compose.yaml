@@ -30,7 +30,7 @@ services:
   yt-cipher:
     container_name: yt-cipher
     build: https://github.com/kikkia/yt-cipher.git#d6b70bace398632cbc886934ff8273a7524fc0c4
-    image: tanya-yt-cipher:d6b70ba
+    image: lain-yt-cipher:d6b70ba
     pull_policy: build
     restart: unless-stopped
     environment:
@@ -38,12 +38,12 @@ services:
     networks:
       - lavalink
 
-  # bot (lavamusic, unmodified upstream source). upstream publishes no current
-  # public image, so it is built here from a pinned commit; update = bump the sha.
+  # bot: lain = lavamusic from a pinned upstream commit + lain.patch and her voice
+  # (see lavamusic/Dockerfile). update = bump the sha there and the image tag here.
   lavamusic:
     container_name: lavamusic
-    build: https://github.com/appujet/lavamusic.git#32e5f73727f1d9f038795806188d7d992e608b4f
-    image: tanya-lavamusic:32e5f73
+    build: ./lavamusic
+    image: lain-lavamusic:32e5f73
     pull_policy: build
     restart: unless-stopped
     env_file:
