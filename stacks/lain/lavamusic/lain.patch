@@ -34,6 +34,33 @@ index 8dcaf58c..53cf5d0b 100644
  			cooldown: 3,
  			args: false,
  			vote: false,
+diff --git a/src/commands/music/Play.ts b/src/commands/music/Play.ts
+index fe7b01d5..88ca90b1 100644
+--- a/src/commands/music/Play.ts
++++ b/src/commands/music/Play.ts
+@@ -3,7 +3,7 @@ import type {
+ 	AutocompleteInteraction,
+ 	VoiceChannel,
+ } from "discord.js";
+-import type { SearchResult } from "lavalink-client";
++import { lainSearch, offerAlternatives } from "../../lain/fallback";
+ import { I18N, t } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+ import { applyFairPlayToQueue } from "../../utils/functions/player";
+@@ -77,10 +77,9 @@ export default class Play extends Command {
+ 
+ 		if (!player.connected) await player.connect();
+ 
+-		let response: SearchResult;
+-		try {
+-			response = (await player.search({ query: query }, ctx.author)) as SearchResult;
+-		} catch (_error) {
++		const response = await lainSearch(player, query, ctx.author);
++		if (!response) {
++			if (await offerAlternatives(ctx, player, query)) return;
+ 			return await ctx.editMessage({
+ 				content: "",
+ 				embeds: [
 diff --git a/src/commands/music/Seek.ts b/src/commands/music/Seek.ts
 index df9533b4..85c7d008 100644
 --- a/src/commands/music/Seek.ts
@@ -61,7 +88,7 @@ index 1da191d2..0a0a1d9f 100644
  			args: false,
  			vote: true,
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..00ca70eb 100644
+index 7a3732e7..e54622f7 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
 @@ -48,7 +48,8 @@ export default class MessageCreate extends Event {
@@ -103,6 +130,249 @@ index 0e77103f..8b787ed6 100644
  			});
  
  			player.set("messageId", message.id);
+diff --git a/src/lain/alt.ts b/src/lain/alt.ts
+new file mode 100644
+index 00000000..90465f66
+--- /dev/null
++++ b/src/lain/alt.ts
+@@ -0,0 +1,101 @@
++// lain: when a link can't be played (soundcloud's new streams, dead pages, ...),
++// read what the page says it is and rank youtube versions by length.
++// pure functions, no discord.js import, so they can be tested on their own.
++
++export interface PageMeta {
++	title: string;
++	artist?: string;
++	duration?: number; // ms
++}
++
++export interface Candidate {
++	title: string;
++	author: string;
++	duration: number; // ms
++	uri: string;
++	isStream?: boolean;
++	identifier?: string;
++}
++
++/** a duration counts as the same version within this many ms. */
++export const SAME_LENGTH_MS = 3000;
++
++export const isUrl = (q: string): boolean => /^https?:\/\/\S+$/i.test(q.trim());
++
++const decode = (s: string): string =>
++	s
++		.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(Number.parseInt(h, 16)))
++		.replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
++		.replace(/&quot;/g, '"')
++		.replace(/&apos;/g, "'")
++		.replace(/&lt;/g, "<")
++		.replace(/&gt;/g, ">")
++		.replace(/&amp;/g, "&")
++		.trim();
++
++const meta = (html: string, name: string): string | undefined => {
++	const re = new RegExp(
++		`<meta[^>]+(?:property|name|itemprop)=["']${name}["'][^>]*content=["']([^"']*)["']`,
++		"i",
++	);
++	const m = html.match(re);
++	return m ? decode(m[1]) : undefined;
++};
++
++/** iso 8601 duration (PT01H07M52S) to ms. */
++export function isoDuration(iso: string): number | undefined {
++	const m = iso.match(/^P(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/i);
++	if (!m || (!m[1] && !m[2] && !m[3])) return undefined;
++	return Math.round(((+(m[1] ?? 0) * 60 + +(m[2] ?? 0)) * 60 + +(m[3] ?? 0)) * 1000);
++}
++
++/** title, artist and length of a track page (soundcloud, bandcamp, anything with og tags). */
++export function parsePage(html: string): PageMeta | undefined {
++	const pageTitle = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
++	let title = meta(html, "og:title") ?? (pageTitle ? decode(pageTitle) : undefined);
++	let artist: string | undefined;
++
++	// soundcloud: "Stream My Catharsis by Jason.Creer | Listen online for free on SoundCloud"
++	const sc = pageTitle && decode(pageTitle).match(/^(?:Stream )?(.+) by (.+?) \| .*SoundCloud/i);
++	if (sc) {
++		title = sc[1];
++		artist = sc[2];
++	}
++	artist ??= meta(html, "music:musician_description") ?? meta(html, "og:audio:artist");
++	if (!title) return undefined;
++
++	let duration: number | undefined;
++	const iso = meta(html, "duration");
++	if (iso) duration = isoDuration(iso);
++	if (!duration) {
++		const ms = html.match(/"full_duration":(\d+)/) ?? html.match(/"duration":(\d+)/);
++		if (ms) duration = Number(ms[1]);
++	}
++	return { title, artist, duration: duration || undefined };
++}
++
++/** what to search youtube for. */
++export function searchText(m: PageMeta): string {
++	const artist = m.artist?.replace(/[._]+/g, " ").trim();
++	if (artist && !m.title.toLowerCase().includes(artist.toLowerCase())) return `${artist} ${m.title}`;
++	return m.title;
++}
++
++export const sameLength = (a?: number, b?: number): boolean =>
++	!!a && !!b && Math.abs(a - b) <= SAME_LENGTH_MS;
++
++/** top `n` unique non-stream candidates; same-length ones first, otherwise search order. */
++export function rank<T extends Candidate>(lists: T[][], target?: number, n = 3): T[] {
++	const seen = new Set<string>();
++	const all: T[] = [];
++	for (const list of lists)
++		for (const c of list) {
++			const key = c.identifier ?? c.uri;
++			if (c.isStream || seen.has(key)) continue;
++			seen.add(key);
++			all.push(c);
++		}
++	const match = all.filter((c) => sameLength(c.duration, target));
++	const rest = all.filter((c) => !sameLength(c.duration, target));
++	return [...match, ...rest].slice(0, n);
++}
+diff --git a/src/lain/fallback.ts b/src/lain/fallback.ts
+new file mode 100644
+index 00000000..792d6b83
+--- /dev/null
++++ b/src/lain/fallback.ts
+@@ -0,0 +1,130 @@
++// lain: plain-text searches go to youtube music first; links that fail get
++// up to three youtube versions to pick from, compared by length.
++import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
++import type { Player, SearchResult, Track } from "lavalink-client";
++import type { Context } from "../structures/index";
++import { applyFairPlayToQueue } from "../utils/functions/player";
++import { isUrl, type PageMeta, parsePage, rank, sameLength, searchText } from "./alt";
++import { keepComponents } from "./text";
++
++const PICK_MS = 60_000;
++const PAGE_MS = 5_000;
++
++const found = (r?: SearchResult | null): r is SearchResult =>
++	!!r && r.loadType !== "error" && r.loadType !== "empty" && (r.tracks?.length ?? 0) > 0;
++
++async function tryFind(player: Player, query: string, source: string | undefined, requester: unknown) {
++	try {
++		const r = (await player.search(
++			source ? { query, source: source as any } : { query },
++			requester,
++		)) as SearchResult;
++		return found(r) ? r : undefined;
++	} catch {
++		return undefined;
++	}
++}
++
++/** links as they are; words on youtube music first, then youtube. */
++export async function lainSearch(
++	player: Player,
++	query: string,
++	requester: unknown,
++): Promise<SearchResult | undefined> {
++	if (isUrl(query)) return tryFind(player, query, undefined, requester);
++	return (
++		(await tryFind(player, query, "ytmsearch", requester)) ??
++		(await tryFind(player, query, "ytsearch", requester))
++	);
++}
++
++async function readPage(url: string): Promise<PageMeta | undefined> {
++	try {
++		const res = await fetch(url, {
++			headers: { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) lain", "accept-language": "en" },
++			redirect: "follow",
++			signal: AbortSignal.timeout(PAGE_MS),
++		});
++		if (!res.ok) return undefined;
++		return parsePage((await res.text()).slice(0, 2_000_000));
++	} catch {
++		return undefined;
++	}
++}
++
++const asCandidate = (t: Track) => ({
++	title: t.info.title,
++	author: t.info.author,
++	duration: t.info.duration,
++	uri: t.info.uri ?? "",
++	isStream: t.info.isStream,
++	identifier: t.info.identifier,
++	track: t,
++});
++
++/**
++ * the link in `query` didn't play: offer youtube versions with buttons.
++ * returns false when there is nothing to offer (caller shows the usual error).
++ */
++export async function offerAlternatives(ctx: Context, player: Player, query: string): Promise<boolean> {
++	if (!isUrl(query) || !ctx.msg) return false;
++	const page = await readPage(query.trim());
++	if (!page) return false;
++
++	const text = searchText(page);
++	const [ytm, yt] = await Promise.all([
++		tryFind(player, text, "ytmsearch", ctx.author),
++		tryFind(player, text, "ytsearch", ctx.author),
++	]);
++	const picks = rank([ytm?.tracks ?? [], yt?.tracks ?? []].map((l) => l.map(asCandidate)), page.duration);
++	if (picks.length === 0) return false;
++
++	const time = (ms: number) => ctx.client.utils.formatTime(ms);
++	const lines = [
++		`couldn't play that link. it says: ${page.title}${page.artist ? ` by ${page.artist}` : ""}${page.duration ? ` (${time(page.duration)})` : ""}`,
++		"found these:",
++		...picks.map(
++			(c, i) =>
++				`${i + 1}. [${c.title}](${c.uri}) by ${c.author} · ${time(c.duration)}${sameLength(c.duration, page.duration) ? " ✓ same length" : ""}`,
++		),
++	];
++	if (page.duration && !picks.some((c) => sameLength(c.duration, page.duration)))
++		lines.push("none match the original length.");
++	lines.push("play one?");
++
++	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
++		...picks.map((_, i) =>
++			new ButtonBuilder().setCustomId(`lain-alt-${i}`).setLabel(String(i + 1)).setStyle(ButtonStyle.Secondary),
++		),
++		new ButtonBuilder().setCustomId("lain-alt-no").setLabel("no").setStyle(ButtonStyle.Secondary),
++	);
++	const msg = await ctx.editMessage({ content: lines.join("\n"), embeds: [], components: keepComponents([row]) });
++	if (!msg) return false;
++
++	const collector = msg.createMessageComponentCollector({
++		filter: (i: any) => i.user.id === ctx.author?.id && String(i.customId).startsWith("lain-alt-"),
++		time: PICK_MS,
++		max: 1,
++	});
++
++	collector.on("collect", async (i: any) => {
++		await i.deferUpdate().catch(() => {});
++		const pick = picks[Number(String(i.customId).slice("lain-alt-".length))];
++		if (!pick) {
++			await ctx.editMessage({ content: "okay. nothing added.", components: [] }).catch(() => {});
++			return;
++		}
++		await player.queue.add(pick.track);
++		if (player.get<boolean>("fairplay")) await applyFairPlayToQueue(player);
++		await ctx
++			.editMessage({ content: `added [${pick.title}](${pick.uri}) to the queue.`, components: [] })
++			.catch(() => {});
++		if (!player.playing && player.queue.tracks.length > 0) await player.play({ paused: false });
++	});
++
++	collector.on("end", async (collected) => {
++		if (collected.size === 0)
++			await ctx.editMessage({ content: "never mind then.", components: [] }).catch(() => {});
++	});
++	return true;
++}
 diff --git a/src/lain/index.ts b/src/lain/index.ts
 new file mode 100644
 index 00000000..5d7bc796
@@ -132,10 +402,10 @@ index 00000000..5d7bc796
 +};
 diff --git a/src/lain/text.ts b/src/lain/text.ts
 new file mode 100644
-index 00000000..91b05f1a
+index 00000000..d2c8ec7c
 --- /dev/null
 +++ b/src/lain/text.ts
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,90 @@
 +// lain: turn embeds and v2 components into one quiet lowercase text message.
 +// pure functions, no discord.js import, so they can be tested on their own.
 +
@@ -195,7 +465,14 @@ index 00000000..91b05f1a
 +	return out.join("\n");
 +}
 +
-+/** returns new message options: text only, lowercase, no embeds, no components. */
++// component arrays lain builds on purpose (the link fallback buttons) survive textify.
++const kept = new WeakSet<object>();
++export function keepComponents<T extends object[]>(rows: T): T {
++	kept.add(rows);
++	return rows;
++}
++
++/** returns new message options: text only, lowercase, no embeds, no components (unless kept). */
 +export function textify(options: Record<string, any>): Record<string, any> {
 +	const touchesBody =
 +		options.content != null || options.embeds !== undefined || options.components !== undefined;
@@ -211,7 +488,8 @@ index 00000000..91b05f1a
 +
 +	const out: Record<string, any> = { ...options };
 +	if (options.embeds !== undefined) out.embeds = [];
-+	if (options.components !== undefined) out.components = [];
++	if (options.components !== undefined)
++		out.components = kept.has(options.components) ? options.components : [];
 +	if (content) out.content = content;
 +	else if ((options.embeds?.length || options.components?.length) && !options.files?.length) {
 +		out.content = "…"; // discord rejects empty messages
