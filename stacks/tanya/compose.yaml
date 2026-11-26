@@ -7,7 +7,7 @@ services:
     environment:
       - _JAVA_OPTIONS=-Xmx1G
       - SERVER_PORT=2333
-      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:?set LAVALINK_PASSWORD in .env}
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD} # from .env (never committed)
     volumes:
       - ./Lavalink/application.yml:/opt/Lavalink/application.yml
       # persist plugins between restarts (user/group 322, not committed)
@@ -27,9 +27,10 @@ services:
     image: ghcr.io/bongodevs/lavamusic:main
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env
+        required: false   # ci has no .env; on the server it holds TOKEN etc.
     environment:
-      - 'NODES=[{"id":"local","host":"lavalink","port":2333,"authorization":"${LAVALINK_PASSWORD:?set LAVALINK_PASSWORD in .env}","retryAmount":5,"retryDelay":60000,"secure":false}]'
+      - 'NODES=[{"id":"local","host":"lavalink","port":2333,"authorization":"${LAVALINK_PASSWORD}","retryAmount":5,"retryDelay":60000,"secure":false}]'
       - DATABASE_URL=file:./lavamusic-pgdata
     volumes:
       - ./data/lavamusic-pgdata:/app/lavamusic-pgdata    # bot database (not committed)
