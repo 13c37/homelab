@@ -8,6 +8,8 @@ services:
       - _JAVA_OPTIONS=-Xmx1G
       - SERVER_PORT=2333
       - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD} # from .env (never committed)
+      # youtube oauth refresh token (throwaway account); empty = start the device-code flow
+      - PLUGINS_YOUTUBE_OAUTH_REFRESHTOKEN=${YT_REFRESH_TOKEN:-}
     volumes:
       - ./Lavalink/application.yml:/opt/Lavalink/application.yml
       # persist plugins between restarts (user/group 322, not committed)

@@ -23,12 +23,16 @@ lavalink:
 plugins:
   youtube:
     enabled: true
+    # youtube bot-checks the server ip, so playback signs in with a throwaway
+    # google account. first start prints a device code in the lavalink log;
+    # the refresh token is passed via env (YT_REFRESH_TOKEN in .env, never committed).
     oauth:
-      enabled: false
+      enabled: true
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
     clients:
+      - "TV" # playback only, needs oauth
       - "TVHTML5_SIMPLY"
       - "ANDROID_MUSIC"
       - "MUSIC"
