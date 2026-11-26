@@ -69,7 +69,7 @@ index 7a3732e7..00ca70eb 100644
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  		const prefixRegex = new RegExp(
 -			`^(<@!?${this.client.user?.id}>|${escapeRegex(guild.prefix)})\\s*`,
-+			`^(<@!?${this.client.user?.id}>|${escapeRegex(guild.prefix)}|${escapeRegex(this.client.env.PREFIX)})\\s*`,
++			`^(<@!?${this.client.user?.id}>|${escapeRegex(guild.prefix)}|${escapeRegex(this.client.env.PREFIX)}|tanya)\\s*`,
 +			"i",
  		);
  		if (!prefixRegex.test(message.content)) return;
