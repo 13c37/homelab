@@ -14,6 +14,8 @@ services:
       - ./Lavalink/application.yml:/opt/Lavalink/application.yml
       # persist plugins between restarts (user/group 322, not committed)
       - ./data/plugins/:/opt/Lavalink/plugins/
+    depends_on:
+      - yt-cipher
     networks:
       - lavalink
     healthcheck:
@@ -22,6 +24,19 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+  # youtube signature deciphering for lavalink (kikkia/yt-cipher), internal network only,
+  # so no api token. built from a pinned commit; update = bump the sha.
+  yt-cipher:
+    container_name: yt-cipher
+    build: https://github.com/kikkia/yt-cipher.git#d6b70bace398632cbc886934ff8273a7524fc0c4
+    image: tanya-yt-cipher:d6b70ba
+    pull_policy: build
+    restart: unless-stopped
+    environment:
+      - OVERRIDE_PLAYER_VARIANT=IAS
+    networks:
+      - lavalink
 
   # bot (lavamusic, unmodified upstream source). upstream publishes no current
   # public image, so it is built here from a pinned commit; update = bump the sha.

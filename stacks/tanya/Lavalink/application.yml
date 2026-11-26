@@ -28,6 +28,11 @@ plugins:
     # the refresh token is passed via env (YT_REFRESH_TOKEN in .env, never committed).
     oauth:
       enabled: true
+    # signatures are deciphered by the yt-cipher container (same stack, internal network)
+    remoteCipher:
+      url: "http://yt-cipher:8001"
+      password: ""
+      userAgent: "tanya"
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
