@@ -1,0 +1,117 @@
+{
+	"player": {
+		"errors": {
+			"no_player": "nothing is playing. it's quiet here.",
+			"no_channel": "you're not in a voice channel. i can't hear you there.",
+			"queue_empty": "the queue is empty. it's quiet now.",
+			"no_previous": "nothing came before this.",
+			"no_song": "nothing here.",
+			"already_paused": "it's already paused.",
+			"user_not_in_voice_channel": "you're not in a voice channel. i can't hear you there."
+		},
+		"trackStart": {
+			"line": "playing: [{title}](<{uri}>) · {author} ({duration})"
+		}
+	},
+	"events": {
+		"interaction": {
+			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
+			"different_voice_channel": "i'm somewhere else. come to {channel}.",
+			"no_music_playing": "nothing is playing.",
+			"cooldown": "wait {time}s.",
+			"error": "something broke. `{error}`"
+		},
+		"message": {
+			"prefix_mention": "you called. say `{prefix} play <link>`. or `{prefix} help`.",
+			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
+			"different_voice_channel": "i'm somewhere else. come to {channel}.",
+			"no_music_playing": "nothing is playing.",
+			"missing_arguments": "that's not enough.",
+			"missing_arguments_description": "`{command}` needs more.\n{examples}",
+			"cooldown": "wait {time}s.",
+			"error": "something broke. `{error}`",
+			"no_voice_channel_queue": "join a voice channel first.",
+			"different_voice_channel_queue": "i'm in <#{channel}>. come there."
+		}
+	},
+	"commands": {
+		"play": {
+			"loading": "looking...",
+			"errors": {
+				"search_error": "i looked. something went wrong.",
+				"no_results": "i looked everywhere. nothing.",
+				"queue_too_long": "the queue is full. {maxQueueSize} is the limit.",
+				"playlist_too_long": "that playlist is too long. {maxPlaylistSize} is the limit."
+			},
+			"added_to_queue": "queued: [{title}](<{uri}>)",
+			"added_playlist_to_queue": "queued {length} tracks."
+		},
+		"skip": { "messages": { "skipped": "skipped." } },
+		"leave": {
+			"left": "leaving. we're all connected anyway.",
+			"not_in_channel": "i'm not anywhere."
+		},
+		"join": {
+			"already_connected": "i'm already in <#{channelId}>.",
+			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
+			"joined": "i'm here."
+		},
+		"stop": { "messages": { "stopped": "stopped. the queue is gone." } },
+		"pause": { "successfully_paused": "paused." },
+		"resume": {
+			"errors": { "not_paused": "it's not paused." },
+			"messages": { "resumed": "back." }
+		},
+		"nowplaying": {
+			"now_playing": "playing",
+			"track_info": "[{title}](<{uri}>)\n`{bar}`"
+		},
+		"loop": {
+			"messages": {
+				"looping_song": "this one, again and again.",
+				"looping_queue": "the whole queue, again.",
+				"looping_off": "no more loops.",
+				"invalid_mode": "that's not a loop mode."
+			}
+		},
+		"shuffle": { "messages": { "shuffled": "shuffled." } },
+		"volume": {
+			"messages": {
+				"invalid_number": "a number, please.",
+				"too_low": "it can't go below 0.",
+				"too_high": "200 is the limit. louder doesn't help.",
+				"set": "volume {volume}."
+			}
+		},
+		"clearqueue": { "messages": { "cleared": "cleared. it's quiet now." } },
+		"queue": {
+			"now_playing": "now: [{title}](<{uri}>) `{duration}`",
+			"live": "live",
+			"track_info": "{index}. [{title}](<{uri}>) `{duration}`",
+			"title": "queue",
+			"page_info": "page {index}/{total}",
+			"duration": "total `{totalDuration}`"
+		},
+		"skipto": { "messages": { "skipped_to": "jumped to {number}." } },
+		"remove": { "messages": { "removed": "removed {songNumber}." } },
+		"replay": { "messages": { "replaying": "from the start." } },
+		"autoplay": {
+			"messages": {
+				"enabled": "autoplay on. i'll pick the next ones.",
+				"disabled": "autoplay off."
+			}
+		},
+		"247": {
+			"messages": {
+				"enabled": "i'll stay. always.",
+				"disabled": "i'll leave when it's quiet."
+			}
+		},
+		"help": {
+			"content": "i'm {bot}. `{prefix} play <link>` to start. `{prefix} help <command>` for more.",
+			"title": "commands",
+			"not_found": "there's no `{cmdName}`.",
+			"footer": "{prefix} help <command>"
+		}
+	}
+}
