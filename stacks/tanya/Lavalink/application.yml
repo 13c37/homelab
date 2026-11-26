@@ -18,8 +18,10 @@ lavalink:
     soundcloudSearchEnabled: true
     gc-warnings: true
   plugins:
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2" # https://github.com/lavalink-devs/youtube-source
-      snapshot: false
+    # pinned snapshot of upstream main (e41dd95, 2026-11-13): 1.18.2 is from july and its
+    # tv client gets a 403; the fixes since are unreleased. back to a release once one ships.
+    - dependency: "dev.lavalink.youtube:youtube-plugin:e41dd95f8bd134b51e75080fb28cc805fecb431a" # https://github.com/lavalink-devs/youtube-source
+      snapshot: true
 plugins:
   youtube:
     enabled: true
