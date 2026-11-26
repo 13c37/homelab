@@ -2,7 +2,7 @@ services:
   # audio node (lavalink v4), only reachable on the internal docker network
   lavalink:
     container_name: lavamusic-lavalink
-    image: ghcr.io/lavalink-devs/lavalink:4
+    image: ghcr.io/lavalink-devs/lavalink:4.2.2
     restart: unless-stopped
     environment:
       - _JAVA_OPTIONS=-Xmx1G

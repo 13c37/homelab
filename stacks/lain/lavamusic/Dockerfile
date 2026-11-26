@@ -4,7 +4,7 @@
 # check that lain.patch still applies (the build fails if it doesn't).
 # the stages mirror upstream's Dockerfile at that commit.
 
-FROM oven/bun:alpine AS builder
+FROM oven/bun:1.4.5-alpine AS builder
 RUN apk add --no-cache patch
 ADD --keep-git-dir=false https://github.com/appujet/lavamusic.git#32e5f73727f1d9f038795806188d7d992e608b4f /app
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN patch -p1 --forward < /lain/lain.patch \
 RUN bun install --frozen-lockfile
 RUN bun run build
 
-FROM oven/bun:alpine AS runtime
+FROM oven/bun:1.4.5-alpine AS runtime
 WORKDIR /app
 COPY --from=builder --chown=bun:bun /app/dist ./dist
 COPY --from=builder --chown=bun:bun /app/locales ./locales
