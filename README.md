@@ -53,6 +53,7 @@ flowchart LR
 | [uptime kuma](stacks/uptime-kuma) | uptime monitoring of all services incl. the public site | `:3001`, lan + tailscale |
 | [homepage](stacks/homepage) | dashboard with links and live status | `:3010`, lan |
 | [site](stacks/site) | static website, public via tailscale funnel, served by caddy | internet (https) |
+| [tanya](stacks/tanya) | discord music bot (lavamusic + lavalink, youtube plugin), `tanya play <link>` | discord only, no host ports |
 | [samba](samba/smb.conf) | `media` share for windows, dedicated user, no guest access | lan |
 | [hermes agent](hermes) | self-hosted ai agent, local model (gemma 4 12b qat) via lm studio on the gaming pc, chat through a private telegram bot | telegram (allowlisted user only) |
 | proxmox backups | nightly backup of the docker lxc and the agent lxc to the hdd | — |

@@ -1,0 +1,53 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+lavalink:
+  server:
+    # password comes from env (LAVALINK_SERVER_PASSWORD)
+    sources:
+      youtube: false # native youtube is deprecated, the youtube-source plugin is used instead
+    bufferDurationMs: 225
+    frameBufferDurationMs: 5000
+    youtubePlaylistLoadLimit: 3
+    opusEncodingQuality: 5
+    resamplingQuality: MEDIUM
+    trackStuckThresholdMs: 5000
+    playerUpdateInterval: 3
+    useSeekGhosting: true
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2" # https://github.com/lavalink-devs/youtube-source
+      snapshot: false
+plugins:
+  youtube:
+    enabled: true
+    oauth:
+      enabled: false
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    clients:
+      - "TVHTML5_SIMPLY"
+      - "ANDROID_MUSIC"
+      - "MUSIC"
+      - "WEB"
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+sentry:
+  dsn: ""
+  environment: ""
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+  request:
+    enabled: true
+    includeClientInfo: true
+    includeHeaders: false
+    includeQueryString: true
+    includePayload: false
+    maxPayloadLength: 10000
