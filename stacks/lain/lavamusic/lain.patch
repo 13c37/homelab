@@ -1,3 +1,556 @@
+diff --git a/drizzle/postgres/0001_lain_stats.sql b/drizzle/postgres/0001_lain_stats.sql
+new file mode 100644
+index 00000000..d21b61db
+--- /dev/null
++++ b/drizzle/postgres/0001_lain_stats.sql
+@@ -0,0 +1,27 @@
++CREATE TABLE "Play" (
++	"id" text PRIMARY KEY NOT NULL,
++	"guildId" text NOT NULL,
++	"requesterId" text,
++	"title" text NOT NULL,
++	"author" text,
++	"uri" text,
++	"source" text,
++	"lengthMs" integer DEFAULT 0 NOT NULL,
++	"isStream" boolean DEFAULT false NOT NULL,
++	"startedAt" timestamp with time zone NOT NULL,
++	"playedMs" integer,
++	"skipped" boolean DEFAULT false NOT NULL,
++	"endReason" text
++);
++--> statement-breakpoint
++CREATE TABLE "VoiceSession" (
++	"id" text PRIMARY KEY NOT NULL,
++	"guildId" text NOT NULL,
++	"channelId" text NOT NULL,
++	"joinedAt" timestamp with time zone NOT NULL,
++	"leftAt" timestamp with time zone
++);
++--> statement-breakpoint
++CREATE INDEX "play_guild_started" ON "Play" USING btree ("guildId","startedAt");--> statement-breakpoint
++CREATE INDEX "play_guild_requester" ON "Play" USING btree ("guildId","requesterId");--> statement-breakpoint
++CREATE INDEX "voice_session_guild_joined" ON "VoiceSession" USING btree ("guildId","joinedAt");
+\ No newline at end of file
+diff --git a/drizzle/postgres/meta/0001_snapshot.json b/drizzle/postgres/meta/0001_snapshot.json
+new file mode 100644
+index 00000000..7c2d7a5e
+--- /dev/null
++++ b/drizzle/postgres/meta/0001_snapshot.json
+@@ -0,0 +1,493 @@
++{
++  "id": "5853c3af-d756-4263-9360-3b6f5112db0f",
++  "prevId": "3f102b21-c614-4979-910b-116caf1512dc",
++  "version": "7",
++  "dialect": "postgresql",
++  "tables": {
++    "public.Bot": {
++      "name": "Bot",
++      "schema": "",
++      "columns": {
++        "botId": {
++          "name": "botId",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "totalPlaySong": {
++          "name": "totalPlaySong",
++          "type": "integer",
++          "primaryKey": false,
++          "notNull": false,
++          "default": 0
++        }
++      },
++      "indexes": {},
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Dj": {
++      "name": "Dj",
++      "schema": "",
++      "columns": {
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "mode": {
++          "name": "mode",
++          "type": "integer",
++          "primaryKey": false,
++          "notNull": true
++        }
++      },
++      "indexes": {},
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Guild": {
++      "name": "Guild",
++      "schema": "",
++      "columns": {
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "prefix": {
++          "name": "prefix",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "language": {
++          "name": "language",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false,
++          "default": "'EnglishUS'"
++        },
++        "defaultVolume": {
++          "name": "defaultVolume",
++          "type": "integer",
++          "primaryKey": false,
++          "notNull": false,
++          "default": 50
++        }
++      },
++      "indexes": {},
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Play": {
++      "name": "Play",
++      "schema": "",
++      "columns": {
++        "id": {
++          "name": "id",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "requesterId": {
++          "name": "requesterId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        },
++        "title": {
++          "name": "title",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "author": {
++          "name": "author",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        },
++        "uri": {
++          "name": "uri",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        },
++        "source": {
++          "name": "source",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        },
++        "lengthMs": {
++          "name": "lengthMs",
++          "type": "integer",
++          "primaryKey": false,
++          "notNull": true,
++          "default": 0
++        },
++        "isStream": {
++          "name": "isStream",
++          "type": "boolean",
++          "primaryKey": false,
++          "notNull": true,
++          "default": false
++        },
++        "startedAt": {
++          "name": "startedAt",
++          "type": "timestamp with time zone",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "playedMs": {
++          "name": "playedMs",
++          "type": "integer",
++          "primaryKey": false,
++          "notNull": false
++        },
++        "skipped": {
++          "name": "skipped",
++          "type": "boolean",
++          "primaryKey": false,
++          "notNull": true,
++          "default": false
++        },
++        "endReason": {
++          "name": "endReason",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        }
++      },
++      "indexes": {
++        "play_guild_started": {
++          "name": "play_guild_started",
++          "columns": [
++            {
++              "expression": "guildId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            },
++            {
++              "expression": "startedAt",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            }
++          ],
++          "isUnique": false,
++          "concurrently": false,
++          "method": "btree",
++          "with": {}
++        },
++        "play_guild_requester": {
++          "name": "play_guild_requester",
++          "columns": [
++            {
++              "expression": "guildId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            },
++            {
++              "expression": "requesterId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            }
++          ],
++          "isUnique": false,
++          "concurrently": false,
++          "method": "btree",
++          "with": {}
++        }
++      },
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Playlist": {
++      "name": "Playlist",
++      "schema": "",
++      "columns": {
++        "id": {
++          "name": "id",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "userId": {
++          "name": "userId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "name": {
++          "name": "name",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "tracks": {
++          "name": "tracks",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": false
++        }
++      },
++      "indexes": {
++        "user_playlist_unique": {
++          "name": "user_playlist_unique",
++          "columns": [
++            {
++              "expression": "userId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            },
++            {
++              "expression": "name",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            }
++          ],
++          "isUnique": true,
++          "concurrently": false,
++          "method": "btree",
++          "with": {}
++        }
++      },
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Role": {
++      "name": "Role",
++      "schema": "",
++      "columns": {
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "roleId": {
++          "name": "roleId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        }
++      },
++      "indexes": {
++        "guild_role_unique": {
++          "name": "guild_role_unique",
++          "columns": [
++            {
++              "expression": "guildId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            },
++            {
++              "expression": "roleId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            }
++          ],
++          "isUnique": true,
++          "concurrently": false,
++          "method": "btree",
++          "with": {}
++        }
++      },
++      "foreignKeys": {
++        "Role_guildId_Guild_guildId_fk": {
++          "name": "Role_guildId_Guild_guildId_fk",
++          "tableFrom": "Role",
++          "tableTo": "Guild",
++          "columnsFrom": [
++            "guildId"
++          ],
++          "columnsTo": [
++            "guildId"
++          ],
++          "onDelete": "no action",
++          "onUpdate": "no action"
++        }
++      },
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Setup": {
++      "name": "Setup",
++      "schema": "",
++      "columns": {
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "textId": {
++          "name": "textId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "messageId": {
++          "name": "messageId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        }
++      },
++      "indexes": {},
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.Stay": {
++      "name": "Stay",
++      "schema": "",
++      "columns": {
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "textId": {
++          "name": "textId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "voiceId": {
++          "name": "voiceId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        }
++      },
++      "indexes": {},
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    },
++    "public.VoiceSession": {
++      "name": "VoiceSession",
++      "schema": "",
++      "columns": {
++        "id": {
++          "name": "id",
++          "type": "text",
++          "primaryKey": true,
++          "notNull": true
++        },
++        "guildId": {
++          "name": "guildId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "channelId": {
++          "name": "channelId",
++          "type": "text",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "joinedAt": {
++          "name": "joinedAt",
++          "type": "timestamp with time zone",
++          "primaryKey": false,
++          "notNull": true
++        },
++        "leftAt": {
++          "name": "leftAt",
++          "type": "timestamp with time zone",
++          "primaryKey": false,
++          "notNull": false
++        }
++      },
++      "indexes": {
++        "voice_session_guild_joined": {
++          "name": "voice_session_guild_joined",
++          "columns": [
++            {
++              "expression": "guildId",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            },
++            {
++              "expression": "joinedAt",
++              "isExpression": false,
++              "asc": true,
++              "nulls": "last"
++            }
++          ],
++          "isUnique": false,
++          "concurrently": false,
++          "method": "btree",
++          "with": {}
++        }
++      },
++      "foreignKeys": {},
++      "compositePrimaryKeys": {},
++      "uniqueConstraints": {},
++      "policies": {},
++      "checkConstraints": {},
++      "isRLSEnabled": false
++    }
++  },
++  "enums": {},
++  "schemas": {},
++  "sequences": {},
++  "roles": {},
++  "policies": {},
++  "views": {},
++  "_meta": {
++    "columns": {},
++    "schemas": {},
++    "tables": {}
++  }
++}
+\ No newline at end of file
+diff --git a/drizzle/postgres/meta/_journal.json b/drizzle/postgres/meta/_journal.json
+index 4ac347f9..c7e600a3 100644
+--- a/drizzle/postgres/meta/_journal.json
++++ b/drizzle/postgres/meta/_journal.json
+@@ -8,6 +8,13 @@
+       "when": 1766336510110,
+       "tag": "0000_cheerful_sage",
+       "breakpoints": true
++    },
++    {
++      "idx": 1,
++      "version": "7",
++      "when": 1795761715087,
++      "tag": "0001_lain_stats",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
 diff --git a/src/LavaClient.ts b/src/LavaClient.ts
 index 54d0b23c..75fd3268 100644
 --- a/src/LavaClient.ts
@@ -272,6 +825,146 @@ index 26e0d132..3701bdaa 100644
  			aliases: ["pong"],
  			cooldown: 3,
  			args: false,
+diff --git a/src/commands/info/Stats.ts b/src/commands/info/Stats.ts
+new file mode 100644
+index 00000000..9d35bcb8
+--- /dev/null
++++ b/src/commands/info/Stats.ts
+@@ -0,0 +1,75 @@
++import { displayName, formatDuration, NO_MENTIONS, numbered, RANGE_LABEL, songLink, userIdFrom } from "../../lain/stats/format";
++import { overview, parseRange, personal, statsDb } from "../../lain/stats/queries";
++import { Command, type Context, type Lavamusic } from "../../structures/index";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++
++const USAGE = "usage: `stats [week|month|year]` · `stats me [range]` · `stats @user [range]`";
++
++// lain: server stats, or one person's.
++export default class Stats extends Command {
++	constructor(client: Lavamusic) {
++		super(client, {
++			name: "stats",
++			description: {
++				content: "what this server (or you) played",
++				examples: ["stats", "stats week", "stats me", "stats @user month"],
++				usage: "stats [me|@user] [week|month|year|all]",
++			},
++			category: "info",
++			aliases: [],
++			cooldown: 3,
++			args: false,
++			vote: false,
++			player: { voice: false, dj: false, active: false, djPerm: null },
++			permissions: { dev: false, client: [SendMessages, ReadMessageHistory, ViewChannel], user: [] },
++			slashCommand: false,
++			options: [],
++		});
++	}
++
++	public async run(_client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
++		const send = (content: string) => ctx.sendMessage({ content, allowedMentions: NO_MENTIONS });
++		const [first, second, ...rest] = args.map((a) => a.toLowerCase());
++		const userId = first === "me" ? ctx.author!.id : first ? userIdFrom(first) : null;
++		const range = parseRange(userId ? second : first);
++		if (!range || rest.length > 0 || (!userId && second !== undefined)) return await send(USAGE);
++
++		const db = await statsDb();
++		if (!db) return await send("stats need the postgres database.");
++		const guild = ctx.guild;
++
++		if (userId) {
++			const name = await displayName(guild, userId);
++			const p = await personal(db, guild.id, userId, range);
++			if (p.plays === 0) return await send(`${name} hasn't played anything yet.`);
++			const lines = [
++				`stats for ${name} · ${RANGE_LABEL[range]}`,
++				`${p.plays} songs · ${formatDuration(p.playedMs)} played` +
++					(p.skipRate === null ? "" : ` · skips ${Math.round(p.skipRate * 100)}%`),
++			];
++			if (p.topSongs.length) lines.push(`top songs: ${numbered(p.topSongs.map((s) => `${songLink(s)} (${s.count})`))}`);
++			if (p.topArtists.length) lines.push(`top artists: ${numbered(p.topArtists.map((a) => `${a.label} (${a.count})`))}`);
++			if (p.firstSong) lines.push(`first song: ${p.firstSong.title}`);
++			return await send(lines.join("\n"));
++		}
++
++		const o = await overview(db, guild.id, range);
++		if (o.plays === 0) return await send("nothing played yet.");
++		const people = await Promise.all(o.topPeople.map(async (p) => `${await displayName(guild, p.key)} (${p.count})`));
++		const f = o.facts;
++		const facts = [
++			f.mostSkipped && `most skipped: ${f.mostSkipped.label}`,
++			f.longestSessionMs !== null && `longest session ${formatDuration(f.longestSessionMs)}`,
++			f.busiestHour !== null && `busiest hour ${String(f.busiestHour).padStart(2, "0")}:00`,
++			f.firstSong && `first song ${f.firstSong.title}`,
++		].filter(Boolean);
++		const lines = [
++			`lain stats · ${RANGE_LABEL[range]}`,
++			`${o.plays} songs · ${formatDuration(o.playedMs)} played · ${formatDuration(o.vcMs)} in vc · joined ${o.joins} ${o.joins === 1 ? "time" : "times"}`,
++		];
++		if (o.topSongs.length) lines.push(`top songs: ${numbered(o.topSongs.map((s) => `${songLink(s)} (${s.count})`))}`);
++		if (people.length) lines.push(`top people: ${numbered(people)}`);
++		if (facts.length) lines.push(facts.join(" · "));
++		return await send(lines.join("\n"));
++	}
++}
+diff --git a/src/commands/info/Top.ts b/src/commands/info/Top.ts
+new file mode 100644
+index 00000000..35f0eba6
+--- /dev/null
++++ b/src/commands/info/Top.ts
+@@ -0,0 +1,53 @@
++import { displayName, formatDuration, NO_MENTIONS, RANGE_LABEL, songLink } from "../../lain/stats/format";
++import { parseRange, statsDb, top } from "../../lain/stats/queries";
++import { Command, type Context, type Lavamusic } from "../../structures/index";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++
++const KINDS = { songs: "songs", song: "songs", artists: "artists", artist: "artists", people: "people", users: "people" } as const;
++const USAGE = "usage: `top [songs|artists|people] [week|month|year]`";
++
++// lain: leaderboards from the stats.
++export default class Top extends Command {
++	constructor(client: Lavamusic) {
++		super(client, {
++			name: "top",
++			description: {
++				content: "most played songs, artists or people",
++				examples: ["top", "top artists week", "top people"],
++				usage: "top [songs|artists|people] [week|month|year|all]",
++			},
++			category: "info",
++			aliases: ["leaderboard", "lb"],
++			cooldown: 3,
++			args: false,
++			vote: false,
++			player: { voice: false, dj: false, active: false, djPerm: null },
++			permissions: { dev: false, client: [SendMessages, ReadMessageHistory, ViewChannel], user: [] },
++			slashCommand: false,
++			options: [],
++		});
++	}
++
++	public async run(_client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
++		const send = (content: string) => ctx.sendMessage({ content, allowedMentions: NO_MENTIONS });
++		const words = args.map((a) => a.toLowerCase());
++		const kind = KINDS[words[0] as keyof typeof KINDS];
++		if (kind) words.shift();
++		const range = parseRange(words[0]);
++		if (!range || words.length > 1) return await send(USAGE);
++
++		const db = await statsDb();
++		if (!db) return await send("stats need the postgres database.");
++
++		const rows = await top(db, ctx.guild.id, kind ?? "songs", range);
++		if (rows.length === 0) return await send("nothing played yet.");
++		const labels = await Promise.all(
++			rows.map((r) =>
++				(kind ?? "songs") === "songs" ? songLink(r) : kind === "people" ? displayName(ctx.guild, r.key) : r.label,
++			),
++		);
++		const lines = [`top ${kind ?? "songs"} · ${RANGE_LABEL[range]}`];
++		rows.forEach((r, i) => lines.push(`${i + 1}. ${labels[i]} · ${r.count} ${r.count === 1 ? "play" : "plays"} · ${formatDuration(r.playedMs)}`));
++		return await send(lines.join("\n"));
++	}
++}
 diff --git a/src/commands/music/Back.ts b/src/commands/music/Back.ts
 new file mode 100644
 index 00000000..08c353cb
@@ -541,6 +1234,57 @@ index 1da191d2..0445d9da 100644
 +		ctx.message?.react("⏭️");
  	}
  }
+diff --git a/src/database/schemas.ts b/src/database/schemas.ts
+index 47ab1204..32a111c6 100644
+--- a/src/database/schemas.ts
++++ b/src/database/schemas.ts
+@@ -1,4 +1,4 @@
+-import { integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
++import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"; // lain: + boolean, index, timestamp
+ 
+ export const bot = pgTable("Bot", {
+ 	botId: text("botId").primaryKey(),
+@@ -50,3 +50,40 @@ export const setup = pgTable("Setup", {
+ 	textId: text("textId").notNull(),
+ 	messageId: text("messageId").notNull(),
+ });
++
++// lain: stats. one row per track that started playing, one per vc session.
++// open rows (playedMs / leftAt null) are closed by the recorder, or by closeStale() on startup.
++export const play = pgTable(
++	"Play",
++	{
++		id: text("id").primaryKey(),
++		guildId: text("guildId").notNull(),
++		requesterId: text("requesterId"),
++		title: text("title").notNull(),
++		author: text("author"),
++		uri: text("uri"),
++		source: text("source"),
++		lengthMs: integer("lengthMs").notNull().default(0),
++		isStream: boolean("isStream").notNull().default(false),
++		startedAt: timestamp("startedAt", { withTimezone: true }).notNull(),
++		playedMs: integer("playedMs"),
++		skipped: boolean("skipped").notNull().default(false),
++		endReason: text("endReason"),
++	},
++	(table) => [
++		index("play_guild_started").on(table.guildId, table.startedAt),
++		index("play_guild_requester").on(table.guildId, table.requesterId),
++	],
++);
++
++export const voiceSession = pgTable(
++	"VoiceSession",
++	{
++		id: text("id").primaryKey(),
++		guildId: text("guildId").notNull(),
++		channelId: text("channelId").notNull(),
++		joinedAt: timestamp("joinedAt", { withTimezone: true }).notNull(),
++		leftAt: timestamp("leftAt", { withTimezone: true }),
++	},
++	(table) => [index("voice_session_guild_joined").on(table.guildId, table.joinedAt)],
++);
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
 index 7a3732e7..a55fe09b 100644
 --- a/src/events/client/MessageCreate.ts
@@ -623,6 +1367,106 @@ index ea0d03cc..7e202b7c 100644
 +		onRaw(this.client, d); // lain: delete replies with their command
  	}
  }
+diff --git a/src/events/client/Ready.ts b/src/events/client/Ready.ts
+index bc863269..f62f8442 100644
+--- a/src/events/client/Ready.ts
++++ b/src/events/client/Ready.ts
+@@ -4,6 +4,7 @@ import { env } from "../../env";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import logger from "../../structures/Logger";
+ import { LavamusicEventType } from "../../types/events";
++import { closeStale } from "../../lain/stats/recorder"; // lain: stats
+ export default class Ready extends Event {
+ 	constructor(client: Lavamusic, file: string) {
+ 		super(client, file, {
+@@ -33,6 +34,7 @@ export default class Ready extends Event {
+ 		} else {
+ 			logger.warn("Top.gg token not found. Skipping auto poster.");
+ 		}
++		void closeStale(); // lain: stats, close rows a restart left open
+ 		await this.client.manager.init({ ...this.client.user!, shards: "auto" });
+ 	}
+ }
+diff --git a/src/events/player/PlayerCreate.ts b/src/events/player/PlayerCreate.ts
+index f1ef79b7..9c57a9b9 100644
+--- a/src/events/player/PlayerCreate.ts
++++ b/src/events/player/PlayerCreate.ts
+@@ -1,6 +1,7 @@
+ import type { Player } from "lavalink-client";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ 
+ export default class PlayerCreate extends Event {
+ 	constructor(client: Lavamusic, file: string) {
+@@ -11,6 +12,7 @@ export default class PlayerCreate extends Event {
+ 	}
+ 
+ 	public async run(player: Player): Promise<void> {
++		if (player.voiceChannelId) stats.joined(player.guildId, player.voiceChannelId); // lain: stats
+ 		const guild = this.client.guilds.cache.get(player.guildId);
+ 		if (!guild) return;
+ 
+diff --git a/src/events/player/PlayerDestroy.ts b/src/events/player/PlayerDestroy.ts
+index df50b947..385bba3d 100644
+--- a/src/events/player/PlayerDestroy.ts
++++ b/src/events/player/PlayerDestroy.ts
+@@ -2,6 +2,7 @@ import type { TextChannel } from "discord.js";
+ import type { Player } from "lavalink-client";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ import { updateSetup } from "../../utils/SetupSystem";
+ 
+ export default class PlayerDestroy extends Event {
+@@ -13,6 +14,7 @@ export default class PlayerDestroy extends Event {
+ 	}
+ 
+ 	public async run(player: Player, _reason: string): Promise<void> {
++		stats.left(player.guildId); // lain: stats
+ 		const guild = this.client.guilds.cache.get(player.guildId);
+ 		if (!guild) return;
+ 		const locale = await this.client.db.getLanguage(player.guildId);
+diff --git a/src/events/player/PlayerPaused.ts b/src/events/player/PlayerPaused.ts
+index 27cec231..2f4fdff3 100644
+--- a/src/events/player/PlayerPaused.ts
++++ b/src/events/player/PlayerPaused.ts
+@@ -1,6 +1,7 @@
+ import type { Player, Track } from "lavalink-client";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ 
+ export default class PlayerPaused extends Event {
+ 	constructor(client: Lavamusic, file: string) {
+@@ -11,6 +12,7 @@ export default class PlayerPaused extends Event {
+ 	}
+ 
+ 	public async run(player: Player, track: Track): Promise<void> {
++		stats.paused(player.guildId); // lain: stats
+ 		if (!player || !track) return;
+ 
+ 		if (player.voiceChannelId) {
+diff --git a/src/events/player/PlayerResumed.ts b/src/events/player/PlayerResumed.ts
+index 102ff623..80628ff6 100644
+--- a/src/events/player/PlayerResumed.ts
++++ b/src/events/player/PlayerResumed.ts
+@@ -1,6 +1,7 @@
+ import type { Player, Track } from "lavalink-client";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ 
+ export default class PlayerResumed extends Event {
+ 	constructor(client: Lavamusic, file: string) {
+@@ -11,6 +12,7 @@ export default class PlayerResumed extends Event {
+ 	}
+ 
+ 	public async run(player: Player, track: Track): Promise<void> {
++		stats.resumed(player.guildId); // lain: stats
+ 		if (!player || !track) return;
+ 
+ 		if (player.voiceChannelId) {
 diff --git a/src/events/player/QueueEnd.ts b/src/events/player/QueueEnd.ts
 index 6c7c9da6..996fbc7d 100644
 --- a/src/events/player/QueueEnd.ts
@@ -656,11 +1500,51 @@ index 6c7c9da6..996fbc7d 100644
 +		if (message.editable) await offerAgain(this.client, player, message, track);
  	}
  }
+diff --git a/src/events/player/TrackEnd.ts b/src/events/player/TrackEnd.ts
+index cd0f8139..cca86669 100644
+--- a/src/events/player/TrackEnd.ts
++++ b/src/events/player/TrackEnd.ts
+@@ -1,7 +1,8 @@
+ import type { TextChannel } from "discord.js";
+-import type { Player, Track, TrackStartEvent } from "lavalink-client";
++import type { Player, Track, TrackEndEvent } from "lavalink-client"; // lain: TrackEndEvent
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ import { updateSetup } from "../../utils/SetupSystem";
+ 
+ export default class TrackEnd extends Event {
+@@ -12,7 +13,8 @@ export default class TrackEnd extends Event {
+ 		});
+ 	}
+ 
+-	public async run(player: Player, _track: Track | null, _payload: TrackStartEvent): Promise<void> {
++	public async run(player: Player, _track: Track | null, payload: TrackEndEvent): Promise<void> {
++		stats.trackEnded(player.guildId, payload?.reason ?? "finished"); // lain: stats
+ 		const guild = this.client.guilds.cache.get(player.guildId);
+ 		if (!guild) return;
+ 
 diff --git a/src/events/player/TrackStart.ts b/src/events/player/TrackStart.ts
-index 0e77103f..8b787ed6 100644
+index 0e77103f..7b4e714a 100644
 --- a/src/events/player/TrackStart.ts
 +++ b/src/events/player/TrackStart.ts
-@@ -41,7 +41,7 @@ export default class TrackStart extends Event {
+@@ -17,6 +17,7 @@ import { I18N, t } from "../../structures/I18n";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import type { Requester } from "../../types";
+ import { LavamusicEventType } from "../../types/events";
++import * as stats from "../../lain/stats/recorder"; // lain: stats
+ import { trackStart } from "../../utils/SetupSystem";
+ 
+ export default class TrackStart extends Event {
+@@ -28,6 +29,7 @@ export default class TrackStart extends Event {
+ 	}
+ 
+ 	public async run(player: Player, track: Track | null, _payload: TrackStartEvent): Promise<void> {
++		if (track) stats.trackStarted(player.guildId, track); // lain: stats
+ 		const guild = this.client.guilds.cache.get(player.guildId);
+ 		if (!guild) return;
+ 		if (!player.textChannelId) return;
+@@ -41,7 +43,7 @@ export default class TrackStart extends Event {
  			await this.client.utils.setVoiceStatus(
  				this.client,
  				player.voiceChannelId,
@@ -669,7 +1553,7 @@ index 0e77103f..8b787ed6 100644
  			);
  		}
  
-@@ -72,8 +72,13 @@ export default class TrackStart extends Event {
+@@ -72,8 +74,13 @@ export default class TrackStart extends Event {
  			}
  		} else {
  			const message = await channel.send({
@@ -1093,6 +1977,435 @@ index 00000000..2f6b4767
 +		for (const replyId of entry.ids) channel.messages.delete(replyId).catch(() => {});
 +	}
 +}
+diff --git a/src/lain/stats/format.ts b/src/lain/stats/format.ts
+new file mode 100644
+index 00000000..02a92f4f
+--- /dev/null
++++ b/src/lain/stats/format.ts
+@@ -0,0 +1,39 @@
++// lain: text for the stats commands. lowercase, no mentions: people are shown by display name.
++import type { Guild } from "discord.js";
++import type { Range, Ranked } from "./queries";
++
++/** "0m", "42m", "3h 5m", "2d 4h". a zero second unit is dropped ("3h", "2d"). */
++export function formatDuration(ms: number): string {
++	const minutes = Math.floor(Math.max(0, ms) / 60_000);
++	const d = Math.floor(minutes / 1440);
++	const h = Math.floor((minutes % 1440) / 60);
++	const m = minutes % 60;
++	if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
++	if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
++	return `${m}m`;
++}
++
++/** markdown link like link() in lain/again, with <> so discord adds no embed per song. */
++export const songLink = (r: Ranked) => (r.uri ? `[${r.label}](<${r.uri}>)` : r.label);
++
++export const RANGE_LABEL: Record<Range, string> = {
++	week: "last 7 days",
++	month: "last 30 days",
++	year: "last 365 days",
++	all: "all time",
++};
++
++/** guild display name, or a mention (rendered as a name, never pings with parse: []). */
++export async function displayName(guild: Guild, userId: string): Promise<string> {
++	const member = guild.members.cache.get(userId) ?? (await guild.members.fetch(userId).catch(() => null));
++	return member?.displayName ?? `<@${userId}>`;
++}
++
++export const numbered = (items: string[]) => items.map((s, i) => `${i + 1}. ${s}`).join(" · ");
++
++/** "<@123>", "<@!123>" or a bare id → the id. */
++export function userIdFrom(word: string): string | null {
++	return /^<@!?(\d{15,25})>$/.exec(word)?.[1] ?? (/^\d{15,25}$/.test(word) ? word : null);
++}
++
++export const NO_MENTIONS = { parse: [] } as const;
+diff --git a/src/lain/stats/queries.ts b/src/lain/stats/queries.ts
+new file mode 100644
+index 00000000..9b8cbb24
+--- /dev/null
++++ b/src/lain/stats/queries.ts
+@@ -0,0 +1,189 @@
++// lain: read side of the stats. only closed rows count; a play counts once it ran 30 s or finished.
++// ranges are rolling windows ending now. hours are europe/berlin.
++import { and, eq, gte, isNotNull, type SQL, sql } from "drizzle-orm";
++import { getDatabase } from "../../database/factory";
++import { PostgresProvider } from "../../database/provider";
++import { play, voiceSession } from "../../database/schemas";
++
++type Db = PostgresProvider["db"];
++export type Range = "week" | "month" | "year" | "all";
++export type Ranked = { key: string; label: string; uri?: string; count: number; playedMs: number };
++export type Facts = {
++	mostSkipped: Ranked | null;
++	longestSessionMs: number | null;
++	busiestHour: number | null;
++	firstSong: { title: string; at: Date } | null;
++};
++export type Overview = {
++	plays: number;
++	playedMs: number;
++	vcMs: number;
++	joins: number;
++	topSongs: Ranked[];
++	topPeople: Ranked[];
++	facts: Facts;
++};
++export type Personal = {
++	plays: number;
++	playedMs: number;
++	skipRate: number | null;
++	topSongs: Ranked[];
++	topArtists: Ranked[];
++	firstSong: { title: string; at: Date } | null;
++};
++
++/** the bot's database when it is postgres, else null (stats are postgres only). */
++export async function statsDb(): Promise<Db | null> {
++	const p = await getDatabase().catch(() => null);
++	return p instanceof PostgresProvider ? p.db : null;
++}
++
++const DAYS: Record<Range, number | null> = { week: 7, month: 30, year: 365, all: null };
++const WORDS: Record<string, Range> = { week: "week", w: "week", month: "month", m: "month", year: "year", y: "year", all: "all" };
++
++/** undefined → "all"; an unknown word → null. */
++export function parseRange(word?: string): Range | null {
++	if (word === undefined) return "all";
++	return WORDS[word.toLowerCase()] ?? null;
++}
++
++const since = (range: Range): Date | null => {
++	const days = DAYS[range];
++	return days === null ? null : new Date(Date.now() - days * 86_400_000);
++};
++
++const num = (s: SQL) => sql<number>`${s}`.mapWith(Number);
++const PLAYED = sql`(${play.playedMs} >= 30000 or ${play.endReason} = 'finished')`;
++const plays = num(sql`count(*) filter (where ${PLAYED})`);
++const playedMs = num(sql`coalesce(sum(${play.playedMs}), 0)`);
++
++const closedIn = (guildId: string, range: Range, userId?: string) => {
++	const from = since(range);
++	return and(
++		eq(play.guildId, guildId),
++		isNotNull(play.playedMs),
++		from ? gte(play.startedAt, from) : undefined,
++		userId === undefined ? undefined : eq(play.requesterId, userId),
++	);
++};
++
++const GROUP = {
++	songs: { key: sql<string>`coalesce(${play.uri}, lower(${play.title}))`, label: sql<string>`max(${play.title})` },
++	artists: { key: sql<string>`lower(${play.author})`, label: sql<string>`max(${play.author})` },
++	people: { key: sql<string>`${play.requesterId}`, label: sql<string>`${play.requesterId}` },
++} as const;
++
++async function ranked(db: Db, where: SQL | undefined, kind: keyof typeof GROUP, limit: number): Promise<Ranked[]> {
++	const g = GROUP[kind];
++	const notNull = kind === "artists" ? isNotNull(play.author) : kind === "people" ? isNotNull(play.requesterId) : undefined;
++	const rows = await db
++		.select({ key: g.key, label: g.label, uri: sql<string | null>`max(${play.uri})`, count: plays, playedMs })
++		.from(play)
++		.where(and(where, notNull))
++		.groupBy(g.key)
++		.having(sql`count(*) filter (where ${PLAYED}) > 0`)
++		.orderBy(sql`4 desc`, sql`5 desc`, sql`2`)
++		.limit(limit);
++	return rows.map((r) => ({
++		key: r.key,
++		label: r.label,
++		...(kind === "songs" && r.uri ? { uri: r.uri } : {}),
++		count: r.count,
++		playedMs: r.playedMs,
++	}));
++}
++
++async function firstSong(db: Db, where: SQL | undefined) {
++	const [row] = await db
++		.select({ title: play.title, at: play.startedAt })
++		.from(play)
++		.where(and(where, PLAYED))
++		.orderBy(play.startedAt)
++		.limit(1);
++	return row ?? null;
++}
++
++export function top(db: Db, guildId: string, kind: "songs" | "artists" | "people", range: Range, limit = 10) {
++	return ranked(db, closedIn(guildId, range), kind, limit);
++}
++
++export async function overview(db: Db, guildId: string, range: Range): Promise<Overview> {
++	const where = closedIn(guildId, range);
++	const from = since(range);
++	const sessionsIn = and(eq(voiceSession.guildId, guildId), from ? gte(voiceSession.joinedAt, from) : undefined);
++	const sessionMs = sql`extract(epoch from coalesce(${voiceSession.leftAt}, now()) - ${voiceSession.joinedAt}) * 1000`;
++
++	const [[totals], [vc], topSongs, topPeople, [skipped], [hour], first] = await Promise.all([
++		db.select({ plays, playedMs }).from(play).where(where),
++		db
++			.select({
++				joins: num(sql`count(*)`),
++				vcMs: num(sql`coalesce(round(sum(${sessionMs})), 0)`),
++				longest: sql<number | null>`round(max(${sessionMs}))`.mapWith((v) => (v === null ? null : Number(v))),
++			})
++			.from(voiceSession)
++			.where(sessionsIn),
++		ranked(db, where, "songs", 3),
++		ranked(db, where, "people", 3),
++		db
++			.select({
++				key: GROUP.songs.key,
++				label: GROUP.songs.label,
++				uri: sql<string | null>`max(${play.uri})`,
++				count: num(sql`count(*)`),
++				playedMs,
++			})
++			.from(play)
++			.where(and(where, eq(play.skipped, true)))
++			.groupBy(GROUP.songs.key)
++			.orderBy(sql`4 desc`, sql`2`)
++			.limit(1),
++		db
++			.select({ hour: num(sql`extract(hour from ${play.startedAt} at time zone 'Europe/Berlin')`) })
++			.from(play)
++			.where(and(where, PLAYED))
++			.groupBy(sql`1`)
++			.orderBy(sql`count(*) desc`, sql`1`)
++			.limit(1),
++		firstSong(db, where),
++	]);
++
++	return {
++		plays: totals?.plays ?? 0,
++		playedMs: totals?.playedMs ?? 0,
++		vcMs: vc?.vcMs ?? 0,
++		joins: vc?.joins ?? 0,
++		topSongs,
++		topPeople,
++		facts: {
++			mostSkipped: skipped
++				? { key: skipped.key, label: skipped.label, ...(skipped.uri ? { uri: skipped.uri } : {}), count: skipped.count, playedMs: skipped.playedMs }
++				: null,
++			longestSessionMs: vc?.longest ?? null,
++			busiestHour: hour?.hour ?? null,
++			firstSong: first,
++		},
++	};
++}
++
++export async function personal(db: Db, guildId: string, userId: string, range: Range): Promise<Personal> {
++	const where = closedIn(guildId, range, userId);
++	const [[totals], topSongs, topArtists, first] = await Promise.all([
++		db
++			.select({ plays, playedMs, closed: num(sql`count(*)`), skips: num(sql`count(*) filter (where ${play.skipped})`) })
++			.from(play)
++			.where(where),
++		ranked(db, where, "songs", 3),
++		ranked(db, where, "artists", 3),
++		firstSong(db, where),
++	]);
++	const closed = totals?.closed ?? 0;
++	return {
++		plays: totals?.plays ?? 0,
++		playedMs: totals?.playedMs ?? 0,
++		skipRate: closed > 0 ? (totals?.skips ?? 0) / closed : null,
++		topSongs,
++		topArtists,
++		firstSong: first,
++	};
++}
+diff --git a/src/lain/stats/recorder.ts b/src/lain/stats/recorder.ts
+new file mode 100644
+index 00000000..9825bf3d
+--- /dev/null
++++ b/src/lain/stats/recorder.ts
+@@ -0,0 +1,164 @@
++// lain: records plays and vc sessions for the stats commands. postgres only (no-op on sqlite).
++// every write is queued per guild and never throws: logging must not block or crash the player.
++import { randomUUID } from "node:crypto";
++import { and, eq, isNull, sql } from "drizzle-orm";
++import type { Track } from "lavalink-client";
++import { getDatabase } from "../../database/factory";
++import { PostgresProvider } from "../../database/provider";
++import { play, voiceSession } from "../../database/schemas";
++import logger from "../../structures/Logger";
++import { isSkipped, playedMs } from "./rules";
++
++type Db = PostgresProvider["db"];
++type Open = { id: string; startedAt: number; pausedAt: number | null; pausedMs: number; lengthMs: number; isStream: boolean };
++
++export interface Recorder {
++	trackStarted(guildId: string, track: Track, at?: Date): Promise<void>;
++	trackEnded(guildId: string, reason: string, at?: Date): Promise<void>;
++	paused(guildId: string, at?: Date): Promise<void>;
++	resumed(guildId: string, at?: Date): Promise<void>;
++	joined(guildId: string, channelId: string, at?: Date): Promise<void>;
++	left(guildId: string, at?: Date): Promise<void>;
++	closeStale(at?: Date): Promise<void>;
++}
++
++export function recorderFor(db: Db): Recorder {
++	const open = new Map<string, Open>();
++	const queues = new Map<string, Promise<void>>();
++
++	// run fn after the guild's previous write; errors go to the logger, never to the caller.
++	const queue = (guildId: string, fn: () => Promise<unknown>): Promise<void> => {
++		const next = (queues.get(guildId) ?? Promise.resolve())
++			.then(fn)
++			.then(() => {})
++			.catch((e) => logger.error(`[stats] ${e}`));
++		queues.set(guildId, next);
++		return next;
++	};
++
++	const close = async (guildId: string, reason: string, endedAt: number) => {
++		const row = open.get(guildId);
++		if (!row) return;
++		open.delete(guildId);
++		const paused = row.pausedMs + (row.pausedAt === null ? 0 : Math.max(0, endedAt - row.pausedAt));
++		const ms = playedMs(row.startedAt, endedAt, paused, row.lengthMs, row.isStream);
++		await db
++			.update(play)
++			.set({ playedMs: ms, endReason: reason, skipped: isSkipped(reason, ms, row.lengthMs, row.isStream) })
++			.where(eq(play.id, row.id));
++	};
++
++	return {
++		trackStarted(guildId, track, at = new Date()) {
++			return queue(guildId, async () => {
++				await close(guildId, "replaced", at.getTime());
++				const info = track.info;
++				const isStream = Boolean(info.isStream);
++				const lengthMs = isStream ? 0 : Math.max(0, Math.round(info.duration ?? 0));
++				const id = randomUUID();
++				open.set(guildId, { id, startedAt: at.getTime(), pausedAt: null, pausedMs: 0, lengthMs, isStream });
++				await db.insert(play).values({
++					id,
++					guildId,
++					requesterId: (track.requester as { id?: string } | undefined)?.id ?? null,
++					title: info.title ?? "unknown",
++					author: info.author ?? null,
++					uri: info.uri ?? null,
++					source: info.sourceName ?? null,
++					lengthMs,
++					isStream,
++					startedAt: at,
++				});
++			});
++		},
++		trackEnded(guildId, reason, at = new Date()) {
++			return queue(guildId, () => close(guildId, reason, at.getTime()));
++		},
++		paused(guildId, at = new Date()) {
++			return queue(guildId, async () => {
++				const row = open.get(guildId);
++				if (row && row.pausedAt === null) row.pausedAt = at.getTime();
++			});
++		},
++		resumed(guildId, at = new Date()) {
++			return queue(guildId, async () => {
++				const row = open.get(guildId);
++				if (row && row.pausedAt !== null) {
++					row.pausedMs += Math.max(0, at.getTime() - row.pausedAt);
++					row.pausedAt = null;
++				}
++			});
++		},
++		joined(guildId, channelId, at = new Date()) {
++			return queue(guildId, async () => {
++				await db
++					.update(voiceSession)
++					.set({ leftAt: at })
++					.where(and(eq(voiceSession.guildId, guildId), isNull(voiceSession.leftAt)));
++				await db.insert(voiceSession).values({ id: randomUUID(), guildId, channelId, joinedAt: at });
++			});
++		},
++		left(guildId, at = new Date()) {
++			return queue(guildId, async () => {
++				await close(guildId, "destroy", at.getTime());
++				await db
++					.update(voiceSession)
++					.set({ leftAt: at })
++					.where(and(eq(voiceSession.guildId, guildId), isNull(voiceSession.leftAt)));
++			});
++		},
++		// startup repair: rows still open from before this process can no longer be closed by events.
++		// playedMs = time until the next play in that guild (or now), capped at the length; a stream
++		// with no later play gets 0 because its real end is unknown. sessions end at their last play.
++		closeStale(at = new Date()) {
++			return queue("*", async () => {
++				const cutoff = at.toISOString();
++				await db.execute(sql`
++					update "Play" p set
++						"playedMs" = greatest(0, case
++							when p."isStream" or p."lengthMs" <= 0 then
++								case when n.next is null then 0 else extract(epoch from n.next - p."startedAt") * 1000 end
++							else least(p."lengthMs", extract(epoch from coalesce(n.next, ${cutoff}::timestamptz) - p."startedAt") * 1000)
++						end)::int,
++						"endReason" = 'restart',
++						"skipped" = false
++					from (
++						select o.id, (
++							select min(q."startedAt") from "Play" q
++							where q."guildId" = o."guildId" and q."startedAt" > o."startedAt"
++						) as next
++						from "Play" o
++						where o."playedMs" is null and o."startedAt" < ${cutoff}::timestamptz
++					) n
++					where p.id = n.id`);
++				await db.execute(sql`
++					update "VoiceSession" v set "leftAt" = greatest(v."joinedAt", coalesce((
++						select max(p."startedAt" + p."playedMs" * interval '1 millisecond') from "Play" p
++						where p."guildId" = v."guildId" and p."startedAt" >= v."joinedAt" and p."playedMs" is not null
++					), v."joinedAt"))
++					where v."leftAt" is null and v."joinedAt" < ${cutoff}::timestamptz`);
++			});
++		},
++	};
++}
++
++// default recorder: bound lazily to the bot's database, a no-op unless it is postgres.
++// `at` is taken when the event fires, not when the database is ready.
++let recorder: Promise<Recorder | null> | null = null;
++const get = () =>
++	(recorder ??= getDatabase()
++		.then((p) => (p instanceof PostgresProvider ? recorderFor(p.db) : null))
++		.catch((e) => {
++			logger.error(`[stats] ${e}`);
++			return null;
++		}));
++const call = <K extends keyof Recorder>(name: K, ...args: Parameters<Recorder[K]>): Promise<void> =>
++	get().then((r) => (r ? (r[name] as (...a: unknown[]) => Promise<void>)(...args) : undefined));
++
++export const trackStarted = (guildId: string, track: Track, at = new Date()) => void call("trackStarted", guildId, track, at);
++export const trackEnded = (guildId: string, reason: string, at = new Date()) => void call("trackEnded", guildId, reason, at);
++export const paused = (guildId: string, at = new Date()) => void call("paused", guildId, at);
++export const resumed = (guildId: string, at = new Date()) => void call("resumed", guildId, at);
++export const joined = (guildId: string, channelId: string, at = new Date()) => void call("joined", guildId, channelId, at);
++export const left = (guildId: string, at = new Date()) => void call("left", guildId, at);
++export const closeStale = (at = new Date()): Promise<void> => call("closeStale", at);
+diff --git a/src/lain/stats/rules.ts b/src/lain/stats/rules.ts
+new file mode 100644
+index 00000000..5d86027e
+--- /dev/null
++++ b/src/lain/stats/rules.ts
+@@ -0,0 +1,13 @@
++// lain: stats rules, pure. lengthMs 0 means stream or unknown length: never capped.
++
++/** wall time minus pauses, capped at the track length (unless stream / unknown), never below 0. */
++export function playedMs(startedAt: number, endedAt: number, pausedMs: number, lengthMs: number, isStream: boolean): number {
++	const ms = Math.max(0, Math.round(endedAt - startedAt - pausedMs));
++	return isStream || lengthMs <= 0 ? ms : Math.min(ms, lengthMs);
++}
++
++/** replaced/stopped counts as a skip unless it ended within 3 s of the track's length. */
++export function isSkipped(endReason: string, playedMs: number, lengthMs: number, _isStream: boolean): boolean {
++	if (endReason !== "replaced" && endReason !== "stopped") return false;
++	return !(lengthMs > 0 && playedMs >= lengthMs - 3000);
++}
 diff --git a/src/lain/text.ts b/src/lain/text.ts
 new file mode 100644
 index 00000000..d2c8ec7c
@@ -1232,3 +2545,241 @@ index 00000000..e1b78c64
 +	}
 +	return best;
 +}
+diff --git a/tests/stats.test.ts b/tests/stats.test.ts
+new file mode 100644
+index 00000000..3f7fbbf5
+--- /dev/null
++++ b/tests/stats.test.ts
+@@ -0,0 +1,232 @@
++/**
++ * lain: stats tests (tables, recorder, queries, format). run from the project root:
++ *
++ *   bun test tests/stats.test.ts
++ */
++import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
++import { mkdtemp, rm } from "node:fs/promises";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { sql } from "drizzle-orm";
++import { eq } from "drizzle-orm";
++import { type Connection, connect } from "../src/database/connection";
++import { play, voiceSession } from "../src/database/schemas";
++import { recorderFor } from "../src/lain/stats/recorder";
++import { formatDuration, songLink } from "../src/lain/stats/format";
++import { overview, parseRange, personal, top } from "../src/lain/stats/queries";
++import { isSkipped, playedMs } from "../src/lain/stats/rules";
++
++setDefaultTimeout(30_000);
++
++let tmpDir: string;
++let conn: Connection;
++let db: any;
++
++beforeAll(async () => {
++	tmpDir = await mkdtemp(join(tmpdir(), "lain-stats-test-"));
++	conn = await connect(join(tmpDir, "pgdata"));
++	await conn.migrate();
++	db = conn.db;
++});
++
++afterAll(async () => {
++	await conn?.close().catch(() => {});
++	await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
++});
++
++describe("tables", () => {
++	test("pglite has the stats tables", async () => {
++		const rows = (
++			await db.execute(
++				sql`select table_name as name from information_schema.tables where table_schema = 'public'`,
++			)
++		).rows as { name: string }[];
++		const names = rows.map((r) => r.name);
++		expect(names).toContain("Play");
++		expect(names).toContain("VoiceSession");
++	});
++});
++
++
++const T0 = Date.parse("2026-11-01T12:00:00Z");
++const at = (ms: number) => new Date(T0 + ms);
++const track = (title: string, duration = 200_000, isStream = false) =>
++	({
++		info: { title, author: "artist", uri: `u:${title}`, sourceName: "youtube", duration, isStream },
++		requester: { id: "u1", username: "u1" },
++	}) as any;
++const plays = async (guildId: string) =>
++	(await db.select().from(play).where(eq(play.guildId, guildId))).sort(
++		(a: any, b: any) => a.startedAt.getTime() - b.startedAt.getTime(),
++	);
++const sessions = async (guildId: string) => db.select().from(voiceSession).where(eq(voiceSession.guildId, guildId));
++
++describe("rules", () => {
++	test("playedMs subtracts pauses, caps at length, never caps streams", () => {
++		expect(playedMs(0, 60_000, 10_000, 200_000, false)).toBe(50_000);
++		expect(playedMs(0, 300_000, 0, 200_000, false)).toBe(200_000);
++		expect(playedMs(0, 900_000, 0, 0, true)).toBe(900_000);
++		expect(playedMs(0, 1_000, 5_000, 200_000, false)).toBe(0);
++	});
++
++	test("isSkipped: replaced/stopped early is a skip, near the end is not", () => {
++		expect(isSkipped("replaced", 40_000, 200_000, false)).toBe(true);
++		expect(isSkipped("replaced", 198_000, 200_000, false)).toBe(false);
++		expect(isSkipped("finished", 10_000, 200_000, false)).toBe(false);
++		expect(isSkipped("stopped", 600_000, 0, true)).toBe(true);
++		expect(isSkipped("restart", 1_000, 200_000, false)).toBe(false);
++	});
++});
++
++describe("recorder", () => {
++	test("pause time is excluded and an early replace is a skip", async () => {
++		const r = recorderFor(db);
++		await r.trackStarted("g1", track("a"), at(0));
++		await r.paused("g1", at(20_000));
++		await r.resumed("g1", at(30_000));
++		await r.trackEnded("g1", "replaced", at(60_000));
++		const [row] = await plays("g1");
++		expect(row.playedMs).toBe(50_000);
++		expect(row.skipped).toBe(true);
++		expect(row.endReason).toBe("replaced");
++		expect(row.requesterId).toBe("u1");
++	});
++
++	test("starting b without an end closes a", async () => {
++		const r = recorderFor(db);
++		await r.trackStarted("g2", track("a"), at(0));
++		await r.trackStarted("g2", track("b"), at(30_000));
++		const [a, b] = await plays("g2");
++		expect(a.playedMs).toBe(30_000);
++		expect(a.endReason).toBe("replaced");
++		expect(b.playedMs).toBeNull();
++	});
++
++	test("left() closes the open track and the session", async () => {
++		const r = recorderFor(db);
++		await r.joined("g3", "c1", at(0));
++		await r.trackStarted("g3", track("a"), at(1_000));
++		await r.left("g3", at(61_000));
++		const [a] = await plays("g3");
++		expect(a.playedMs).toBe(60_000);
++		expect(a.endReason).toBe("destroy");
++		expect(a.skipped).toBe(false);
++		const [s] = await sessions("g3");
++		expect(s.leftAt?.getTime()).toBe(T0 + 61_000);
++	});
++
++	test("closeStale() closes rows a restart left open", async () => {
++		const r = recorderFor(db);
++		await r.joined("g4", "c1", at(-1_000));
++		await r.trackStarted("g4", track("a"), at(0));
++		await r.trackStarted("g4", track("b"), at(90_000));
++		// simulate a crash: reopen a, keep b open, forget the in-memory state
++		await db.update(play).set({ playedMs: null, endReason: null }).where(eq(play.guildId, "g4"));
++		await recorderFor(db).closeStale();
++		const [a, b] = await plays("g4");
++		expect(a.playedMs).toBe(90_000);
++		expect(b.playedMs).toBe(200_000);
++		expect(a.endReason).toBe("restart");
++		expect(b.endReason).toBe("restart");
++		expect(a.skipped || b.skipped).toBe(false);
++		const [s] = await sessions("g4");
++		expect(s.leftAt?.getTime()).toBe(T0 + 90_000 + 200_000);
++	});
++});
++
++const DAY = 86_400_000;
++const ago = (ms: number) => new Date(Date.now() - ms);
++let seq = 0;
++const row = (guildId: string, title: string, requesterId: string, startedAt: Date, ms: number, extra: any = {}) => ({
++	id: `r${++seq}`,
++	guildId,
++	requesterId,
++	title,
++	author: `artist ${title}`,
++	uri: `u:${title}`,
++	lengthMs: 200_000,
++	startedAt,
++	playedMs: ms,
++	endReason: "finished",
++	...extra,
++});
++
++describe("queries", () => {
++	beforeAll(async () => {
++		await db.insert(play).values([
++			row("q1", "A", "u1", ago(DAY), 200_000),
++			row("q1", "A", "u1", ago(DAY - 300_000), 200_000),
++			row("q1", "B", "u2", ago(2 * DAY), 100_000, { endReason: "replaced", skipped: false }),
++			row("q1", "B", "u2", ago(2 * DAY - 200_000), 10_000, { endReason: "replaced", skipped: true }),
++			row("q1", "C", "u1", ago(10 * DAY), 200_000),
++			row("q1", "D", "u1", ago(1_000), null, { endReason: null }),
++			row("q2", "late", "u1", new Date("2026-11-27T20:30:00Z"), 200_000),
++		]);
++		await db.insert(voiceSession).values([
++			{ id: "s1", guildId: "q1", channelId: "c", joinedAt: ago(DAY + 3_600_000), leftAt: ago(DAY) },
++		]);
++	});
++
++	test("a 10 s skip counts in playedMs but not in plays; open rows are ignored", async () => {
++		const o = await overview(db, "q1", "all");
++		expect(o.plays).toBe(4);
++		expect(o.playedMs).toBe(710_000);
++		expect(o.joins).toBe(1);
++		expect(o.vcMs).toBe(3_600_000);
++		expect(o.facts.mostSkipped?.label).toBe("B");
++	});
++
++	test("top orders by count, then playedMs", async () => {
++		const songs = await top(db, "q1", "songs", "all");
++		expect(songs.map((s) => s.label)).toEqual(["A", "C", "B"]);
++		expect(songs[0].count).toBe(2);
++		const people = await top(db, "q1", "people", "all");
++		expect(people.map((p) => p.key)).toEqual(["u1", "u2"]);
++	});
++
++	test("week drops a row from 10 days ago", async () => {
++		const o = await overview(db, "q1", "week");
++		expect(o.plays).toBe(3);
++		expect(o.playedMs).toBe(510_000);
++	});
++
++	test("busiest hour is in europe/berlin", async () => {
++		const o = await overview(db, "q2", "all");
++		expect(o.facts.busiestHour).toBe(21);
++		expect(o.facts.firstSong?.title).toBe("late");
++	});
++
++	test("personal stats", async () => {
++		const me = await personal(db, "q1", "u2", "all");
++		expect(me.plays).toBe(1);
++		expect(me.skipRate).toBe(0.5);
++		const none = await personal(db, "q1", "nobody", "all");
++		expect(none.plays).toBe(0);
++		expect(none.skipRate).toBeNull();
++		expect(none.topSongs).toEqual([]);
++		expect(none.topArtists).toEqual([]);
++		expect(none.firstSong).toBeNull();
++	});
++
++	test("parseRange", () => {
++		expect(parseRange(undefined)).toBe("all");
++		expect(parseRange("w")).toBe("week");
++		expect(parseRange("Month")).toBe("month");
++		expect(parseRange("fortnight")).toBeNull();
++	});
++});
++
++describe("format", () => {
++	test("formatDuration", () => {
++		expect(formatDuration(0)).toBe("0m");
++		expect(formatDuration(42 * 60_000)).toBe("42m");
++		expect(formatDuration((3 * 60 + 5) * 60_000)).toBe("3h 5m");
++		expect(formatDuration((2 * 24 + 4) * 3_600_000)).toBe("2d 4h");
++		expect(formatDuration(-5)).toBe("0m");
++	});
++
++	test("songLink links with embeds suppressed, plain title without uri", () => {
++		expect(songLink({ key: "k", label: "a b", uri: "https://x.y/z", count: 1, playedMs: 0 })).toBe("[a b](<https://x.y/z>)");
++		expect(songLink({ key: "k", label: "a b", count: 1, playedMs: 0 })).toBe("a b");
++	});
++});
