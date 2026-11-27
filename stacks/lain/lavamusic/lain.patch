@@ -791,7 +791,7 @@ index b6f4295e..c3860eeb 100644
  	}
  }
 diff --git a/src/commands/info/Botinfo.ts b/src/commands/info/Botinfo.ts
-index a62b294b..6e9a5afd 100644
+index a62b294b..0eafca81 100644
 --- a/src/commands/info/Botinfo.ts
 +++ b/src/commands/info/Botinfo.ts
 @@ -1,9 +1,8 @@
@@ -799,7 +799,7 @@ index a62b294b..6e9a5afd 100644
 -import { version } from "discord.js";
 -import { showTotalMemory, usagePercent } from "node-system-stats";
 +import { commandCount } from "../../lain/help";
-+import { count } from "../../lain/stats/format";
++import { count, uptime } from "../../lain/stats/format";
  import { I18N } from "../../structures/I18n";
  import { Command, type Context, type Lavamusic } from "../../structures/index";
 -import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
@@ -884,7 +884,7 @@ index a62b294b..6e9a5afd 100644
 +		await ctx.sendMessage({
 +			content: [
 +				"### lain.fm",
-+				`up **${client.utils.formatTime(client.uptime ?? 0)}** · ping **${Math.round(client.ws.ping)}ms**`,
++				`up **${uptime(client.uptime ?? 0)}** · ping **${Math.round(client.ws.ping)}ms**`,
 +				`${count(servers, "server")} · playing in **${playing}**`,
 +				`-# lavalink ${up === nodes.length && up > 0 ? "ok" : `${up}/${nodes.length} up`} · ${commands} commands`,
 +			].join("\n"),
@@ -2288,7 +2288,7 @@ index 00000000..f885c7ae
 +}
 diff --git a/src/lain/help.ts b/src/lain/help.ts
 new file mode 100644
-index 00000000..f7354fcb
+index 00000000..b584438a
 --- /dev/null
 +++ b/src/lain/help.ts
 @@ -0,0 +1,76 @@
@@ -2358,7 +2358,7 @@ index 00000000..f7354fcb
 +
 +export function commandHelp(c: CommandInfo): string {
 +	const lines = [`### ${SHOWN}${c.name}`, c.description, `**usage** ${code(SHOWN + c.usage)}`];
-+	if (c.examples.length) lines.push(`**examples** ${c.examples.map((e) => code(SHOWN + e)).join(" · ")}`);
++	if (c.examples.length) lines.push(`**examples** ${c.examples.slice(0, 2).map((e) => code(SHOWN + e)).join(" · ")}`);
 +	if (c.aliases.length) lines.push(`**aliases** ${c.aliases.map(code).join(" ")}`);
 +	lines.push(`-# ${c.category} · cooldown ${c.cooldown}s`);
 +	return lines.join("\n");
@@ -2452,10 +2452,10 @@ index 00000000..2f6b4767
 +}
 diff --git a/src/lain/stats/format.ts b/src/lain/stats/format.ts
 new file mode 100644
-index 00000000..79a649f8
+index 00000000..f3a9790d
 --- /dev/null
 +++ b/src/lain/stats/format.ts
-@@ -0,0 +1,43 @@
+@@ -0,0 +1,53 @@
 +// lain: text for the stats commands. lowercase, no mentions: people are shown by display name.
 +import type { Guild } from "discord.js";
 +import type { Range, Ranked } from "./queries";
@@ -2489,6 +2489,16 @@ index 00000000..79a649f8
 +
 +/** one item per line, so discord renders a numbered list. */
 +export const numbered = (items: string[]) => items.map((s, i) => `${i + 1}. ${s}`).join("\n");
++
++/** "45s", "2m 39s", "3h 12m", "2d 4h": two units at most, never a clock. */
++export function uptime(ms: number): string {
++	const s = Math.floor(ms / 1000);
++	const [d, h, m] = [Math.floor(s / 86400), Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60];
++	if (d) return `${d}d ${h}h`;
++	if (h) return `${h}h ${m}m`;
++	if (m) return `${m}m ${s % 60}s`;
++	return `${s}s`;
++}
 +
 +/** "**1** song", "**12** songs". */
 +export const count = (n: number, word: string) => `**${n}** ${word}${n === 1 ? "" : "s"}`;
@@ -3031,10 +3041,10 @@ index 00000000..e1b78c64
 +}
 diff --git a/tests/help.test.ts b/tests/help.test.ts
 new file mode 100644
-index 00000000..c50635ea
+index 00000000..d4e553f7
 --- /dev/null
 +++ b/tests/help.test.ts
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,107 @@
 +/**
 + * lain: what `lain help` prints. run from the project root:
 + *
@@ -3117,6 +3127,20 @@ index 00000000..c50635ea
 +		);
 +	});
 +
++	test("at most two examples, so the line doesn't wrap", () => {
++		const out = commandHelp({
++			name: "play",
++			description: "plays a song",
++			usage: "play <song>",
++			examples: ["play a", "play b", "play c", "play d"],
++			aliases: [],
++			category: "music",
++			cooldown: 3,
++		});
++		expect(out).toContain("**examples** `lain play a` · `lain play b`\n");
++		expect(out).not.toContain("play c");
++	});
++
 +	test("no aliases or examples, no empty lines", () => {
 +		const out = commandHelp({ name: "stop", description: "stops", usage: "stop", examples: [], aliases: [], category: "music", cooldown: 3 });
 +		expect(out).toBe(["### lain stop", "stops", "**usage** `lain stop`", "-# music · cooldown 3s"].join("\n"));
@@ -3183,17 +3207,28 @@ index 00000000..79551610
 +});
 diff --git a/tests/stats-format.test.ts b/tests/stats-format.test.ts
 new file mode 100644
-index 00000000..ebeeaadd
+index 00000000..fcb56248
 --- /dev/null
 +++ b/tests/stats-format.test.ts
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,33 @@
 +/**
 + * lain: markdown layout of the stats replies. run from the project root:
 + *
 + *   bun test tests/stats-format.test.ts
 + */
 +import { describe, expect, test } from "bun:test";
-+import { count, numbered } from "../src/lain/stats/format";
++import { count, numbered, uptime } from "../src/lain/stats/format";
++
++describe("uptime", () => {
++	test("two units at most, never looks like a clock", () => {
++		expect(uptime(0)).toBe("0s");
++		expect(uptime(45_000)).toBe("45s");
++		expect(uptime(159_000)).toBe("2m 39s");
++		expect(uptime(3_600_000)).toBe("1h 0m");
++		expect(uptime((3 * 60 + 12) * 60_000 + 5_000)).toBe("3h 12m");
++		expect(uptime(((2 * 24 + 4) * 60 + 30) * 60_000)).toBe("2d 4h");
++	});
++});
 +
 +describe("count", () => {
 +	test("bold number, singular for 1", () => {
