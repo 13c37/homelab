@@ -1675,10 +1675,10 @@ index 00000000..69820ba5
 +}
 diff --git a/src/lain/alt.ts b/src/lain/alt.ts
 new file mode 100644
-index 00000000..90465f66
+index 00000000..1141270a
 --- /dev/null
 +++ b/src/lain/alt.ts
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,124 @@
 +// lain: when a link can't be played (soundcloud's new streams, dead pages, ...),
 +// read what the page says it is and rank youtube versions by length.
 +// pure functions, no discord.js import, so they can be tested on their own.
@@ -1779,6 +1779,29 @@ index 00000000..90465f66
 +	const match = all.filter((c) => sameLength(c.duration, target));
 +	const rest = all.filter((c) => !sameLength(c.duration, target));
 +	return [...match, ...rest].slice(0, n);
++}
++
++const words = (s: string): string[] => s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
++
++/** how many words of the query show up in a hit's author + title. */
++export function matchScore(query: string, title: string, author: string): number {
++	const hay = words(`${author} ${title}`).join(" ");
++	return words(query).filter((w) => hay.includes(w)).length;
++}
++
++interface Hits {
++	tracks: { info: { title: string; author: string } }[];
++}
++
++/**
++ * plain-text search: youtube music by default, but youtube when its top hit
++ * matches more of the query (uploads that aren't in the music catalog).
++ */
++export function pickSearch<T extends Hits>(query: string, ytm?: T, yt?: T): T | undefined {
++	if (!ytm || !yt) return ytm ?? yt;
++	const top = (r: T) =>
++		r.tracks[0] ? matchScore(query, r.tracks[0].info.title, r.tracks[0].info.author) : -1;
++	return top(yt) > top(ytm) ? yt : ytm;
 +}
 diff --git a/src/lain/chat.ts b/src/lain/chat.ts
 new file mode 100644
@@ -1897,17 +1920,17 @@ index 00000000..6f34cefc
 +}
 diff --git a/src/lain/fallback.ts b/src/lain/fallback.ts
 new file mode 100644
-index 00000000..792d6b83
+index 00000000..f885c7ae
 --- /dev/null
 +++ b/src/lain/fallback.ts
-@@ -0,0 +1,130 @@
-+// lain: plain-text searches go to youtube music first; links that fail get
-+// up to three youtube versions to pick from, compared by length.
+@@ -0,0 +1,131 @@
++// lain: plain-text searches ask youtube music and youtube, best match wins;
++// links that fail get up to three youtube versions to pick from, compared by length.
 +import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 +import type { Player, SearchResult, Track } from "lavalink-client";
 +import type { Context } from "../structures/index";
 +import { applyFairPlayToQueue } from "../utils/functions/player";
-+import { isUrl, type PageMeta, parsePage, rank, sameLength, searchText } from "./alt";
++import { isUrl, type PageMeta, parsePage, pickSearch, rank, sameLength, searchText } from "./alt";
 +import { keepComponents } from "./text";
 +
 +const PICK_MS = 60_000;
@@ -1928,17 +1951,18 @@ index 00000000..792d6b83
 +	}
 +}
 +
-+/** links as they are; words on youtube music first, then youtube. */
++/** links as they are; words on youtube music and youtube, best top hit wins. */
 +export async function lainSearch(
 +	player: Player,
 +	query: string,
 +	requester: unknown,
 +): Promise<SearchResult | undefined> {
 +	if (isUrl(query)) return tryFind(player, query, undefined, requester);
-+	return (
-+		(await tryFind(player, query, "ytmsearch", requester)) ??
-+		(await tryFind(player, query, "ytsearch", requester))
-+	);
++	const [ytm, yt] = await Promise.all([
++		tryFind(player, query, "ytmsearch", requester),
++		tryFind(player, query, "ytsearch", requester),
++	]);
++	return pickSearch(query, ytm, yt);
 +}
 +
 +async function readPage(url: string): Promise<PageMeta | undefined> {
@@ -2688,6 +2712,59 @@ index 00000000..e1b78c64
 +	}
 +	return best;
 +}
+diff --git a/tests/search.test.ts b/tests/search.test.ts
+new file mode 100644
+index 00000000..79551610
+--- /dev/null
++++ b/tests/search.test.ts
+@@ -0,0 +1,47 @@
++/**
++ * lain: which search source plays for plain text. run from the project root:
++ *
++ *   bun test tests/search.test.ts
++ */
++import { describe, expect, test } from "bun:test";
++import { matchScore, pickSearch } from "../src/lain/alt";
++
++const res = (...hits: [string, string][]) => ({
++	tracks: hits.map(([author, title]) => ({ info: { author, title } })),
++});
++
++describe("matchScore", () => {
++	test("counts query words found in author + title", () => {
++		expect(matchScore("pokelawls built different", "BUILT DIFFERENTLY", "Pokelawls")).toBe(3);
++		expect(matchScore("pokelawls built different", "BUILT DIFFERENT", "DJS1")).toBe(2);
++	});
++	test("ignores case and punctuation", () => {
++		expect(matchScore("AC/DC thunderstruck!", "Thunderstruck (Official Video)", "AC/DC")).toBe(3);
++	});
++	test("empty query scores 0", () => {
++		expect(matchScore("  ", "anything", "anyone")).toBe(0);
++	});
++});
++
++describe("pickSearch", () => {
++	const ytmPoke = res(["DJS1", "BUILT DIFFERENT"], ["Sway Burr", "Built Differently (Remix)"]);
++	const ytPoke = res(["Pokelawls", "BUILT DIFFERENTLY"], ["Pokelawls", "Streamers react to Built Differently"]);
++
++	test("youtube wins when its top hit matches more query words", () => {
++		expect(pickSearch("pokelawls built different", ytmPoke, ytPoke)).toBe(ytPoke);
++		const ytm2 = res(["Sway Burr", "Built Differently (Remix)"]);
++		expect(pickSearch("pokelawls built differently", ytm2, ytPoke)).toBe(ytPoke);
++	});
++
++	test("a tie stays on youtube music", () => {
++		const ytm = res(["Daft Punk", "Get Lucky"]);
++		const yt = res(["Daft Punk", "Daft Punk - Get Lucky (Official Video)"]);
++		expect(pickSearch("daft punk get lucky", ytm, yt)).toBe(ytm);
++	});
++
++	test("falls back to whichever source found something", () => {
++		expect(pickSearch("x", undefined, ytPoke)).toBe(ytPoke);
++		expect(pickSearch("x", ytmPoke, undefined)).toBe(ytmPoke);
++		expect(pickSearch("x", undefined, undefined)).toBeUndefined();
++	});
++});
 diff --git a/tests/stats.test.ts b/tests/stats.test.ts
 new file mode 100644
 index 00000000..93c94bd4
