@@ -2531,10 +2531,10 @@ index 00000000..13036536
 +export const closeStale = (at = new Date()): Promise<void> => call("closeStale", at);
 diff --git a/src/lain/stats/rules.ts b/src/lain/stats/rules.ts
 new file mode 100644
-index 00000000..5d86027e
+index 00000000..0f4924df
 --- /dev/null
 +++ b/src/lain/stats/rules.ts
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,14 @@
 +// lain: stats rules, pure. lengthMs 0 means stream or unknown length: never capped.
 +
 +/** wall time minus pauses, capped at the track length (unless stream / unknown), never below 0. */
@@ -2543,8 +2543,9 @@ index 00000000..5d86027e
 +	return isStream || lengthMs <= 0 ? ms : Math.min(ms, lengthMs);
 +}
 +
-+/** replaced/stopped counts as a skip unless it ended within 3 s of the track's length. */
-+export function isSkipped(endReason: string, playedMs: number, lengthMs: number, _isStream: boolean): boolean {
++/** replaced/stopped counts as a skip unless it ended within 3 s of the track's length. streams never do. */
++export function isSkipped(endReason: string, playedMs: number, lengthMs: number, isStream: boolean): boolean {
++	if (isStream) return false;
 +	if (endReason !== "replaced" && endReason !== "stopped") return false;
 +	return !(lengthMs > 0 && playedMs >= lengthMs - 3000);
 +}
@@ -2689,10 +2690,10 @@ index 00000000..e1b78c64
 +}
 diff --git a/tests/stats.test.ts b/tests/stats.test.ts
 new file mode 100644
-index 00000000..d9b59bc9
+index 00000000..93c94bd4
 --- /dev/null
 +++ b/tests/stats.test.ts
-@@ -0,0 +1,302 @@
+@@ -0,0 +1,303 @@
 +/**
 + * lain: stats tests (tables, recorder, queries, format). run from the project root:
 + *
@@ -2768,7 +2769,8 @@ index 00000000..d9b59bc9
 +		expect(isSkipped("replaced", 40_000, 200_000, false)).toBe(true);
 +		expect(isSkipped("replaced", 198_000, 200_000, false)).toBe(false);
 +		expect(isSkipped("finished", 10_000, 200_000, false)).toBe(false);
-+		expect(isSkipped("stopped", 600_000, 0, true)).toBe(true);
++		expect(isSkipped("stopped", 600_000, 0, true)).toBe(false);
++		expect(isSkipped("replaced", 5_000, 0, true)).toBe(false);
 +		expect(isSkipped("restart", 1_000, 200_000, false)).toBe(false);
 +	});
 +});
