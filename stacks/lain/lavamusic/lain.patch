@@ -2219,10 +2219,10 @@ index 00000000..9b8cbb24
 +}
 diff --git a/src/lain/stats/recorder.ts b/src/lain/stats/recorder.ts
 new file mode 100644
-index 00000000..9825bf3d
+index 00000000..13036536
 --- /dev/null
 +++ b/src/lain/stats/recorder.ts
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,170 @@
 +// lain: records plays and vc sessions for the stats commands. postgres only (no-op on sqlite).
 +// every write is queued per guild and never throws: logging must not block or crash the player.
 +import { randomUUID } from "node:crypto";
@@ -2250,10 +2250,14 @@ index 00000000..9825bf3d
 +export function recorderFor(db: Db): Recorder {
 +	const open = new Map<string, Open>();
 +	const queues = new Map<string, Promise<void>>();
++	// closeStale() sets this; every write queued after it waits for the repair.
++	let startup: Promise<void> = Promise.resolve();
 +
 +	// run fn after the guild's previous write; errors go to the logger, never to the caller.
 +	const queue = (guildId: string, fn: () => Promise<unknown>): Promise<void> => {
++		const gate = startup;
 +		const next = (queues.get(guildId) ?? Promise.resolve())
++			.then(() => gate)
 +			.then(fn)
 +			.then(() => {})
 +			.catch((e) => logger.error(`[stats] ${e}`));
@@ -2336,7 +2340,7 @@ index 00000000..9825bf3d
 +		// playedMs = time until the next play in that guild (or now), capped at the length; a stream
 +		// with no later play gets 0 because its real end is unknown. sessions end at their last play.
 +		closeStale(at = new Date()) {
-+			return queue("*", async () => {
++			startup = queue("*", async () => {
 +				const cutoff = at.toISOString();
 +				await db.execute(sql`
 +					update "Play" p set
@@ -2350,7 +2354,7 @@ index 00000000..9825bf3d
 +					from (
 +						select o.id, (
 +							select min(q."startedAt") from "Play" q
-+							where q."guildId" = o."guildId" and q."startedAt" > o."startedAt"
++							where q."guildId" = o."guildId" and q."startedAt" > o."startedAt" and q."startedAt" < ${cutoff}::timestamptz
 +						) as next
 +						from "Play" o
 +						where o."playedMs" is null and o."startedAt" < ${cutoff}::timestamptz
@@ -2359,10 +2363,12 @@ index 00000000..9825bf3d
 +				await db.execute(sql`
 +					update "VoiceSession" v set "leftAt" = greatest(v."joinedAt", coalesce((
 +						select max(p."startedAt" + p."playedMs" * interval '1 millisecond') from "Play" p
-+						where p."guildId" = v."guildId" and p."startedAt" >= v."joinedAt" and p."playedMs" is not null
++						where p."guildId" = v."guildId" and p."startedAt" >= v."joinedAt" and p."startedAt" < ${cutoff}::timestamptz
++							and p."playedMs" is not null
 +					), v."joinedAt"))
 +					where v."leftAt" is null and v."joinedAt" < ${cutoff}::timestamptz`);
 +			});
++			return startup;
 +		},
 +	};
 +}
@@ -2547,10 +2553,10 @@ index 00000000..e1b78c64
 +}
 diff --git a/tests/stats.test.ts b/tests/stats.test.ts
 new file mode 100644
-index 00000000..3f7fbbf5
+index 00000000..d9b59bc9
 --- /dev/null
 +++ b/tests/stats.test.ts
-@@ -0,0 +1,232 @@
+@@ -0,0 +1,302 @@
 +/**
 + * lain: stats tests (tables, recorder, queries, format). run from the project root:
 + *
@@ -2781,5 +2787,75 @@ index 00000000..3f7fbbf5
 +	test("songLink links with embeds suppressed, plain title without uri", () => {
 +		expect(songLink({ key: "k", label: "a b", uri: "https://x.y/z", count: 1, playedMs: 0 })).toBe("[a b](<https://x.y/z>)");
 +		expect(songLink({ key: "k", label: "a b", count: 1, playedMs: 0 })).toBe("a b");
++	});
++});
++
++describe("restart and edge cases", () => {
++	test("closeStale runs before guild writes queued after it", async () => {
++		await recorderFor(db).joined("g5", "c1", at(-1_000));
++		await db.insert(play).values({ id: "g5a", guildId: "g5", title: "a", lengthMs: 200_000, startedAt: at(0) });
++		const r = recorderFor(db);
++		const repair = r.closeStale(at(500_000));
++		await r.joined("g5", "c2", at(600_000));
++		await repair;
++		const s = (await sessions("g5")).sort((x: any, y: any) => x.joinedAt.getTime() - y.joinedAt.getTime());
++		expect(s[0].leftAt?.getTime()).toBe(T0 + 200_000);
++		expect(s[1].leftAt).toBeNull();
++	});
++
++	test("closeStale ignores plays started after the cutoff", async () => {
++		await db.insert(voiceSession).values({ id: "g6s", guildId: "g6", channelId: "c", joinedAt: at(-1_000) });
++		await db.insert(play).values([
++			{ id: "g6a", guildId: "g6", title: "radio", lengthMs: 0, isStream: true, startedAt: at(0) },
++			{ id: "g6b", guildId: "g6", title: "x", lengthMs: 200_000, startedAt: at(500_000), playedMs: 100_000, endReason: "finished" },
++		]);
++		await recorderFor(db).closeStale(at(400_000));
++		const [radio] = await plays("g6");
++		expect(radio.playedMs).toBe(0);
++		const [s] = await sessions("g6");
++		expect(s.leftAt?.getTime()).toBe(T0);
++	});
++
++	test("closeStale: stale stream with a later play gets the gap, session without plays ends at join", async () => {
++		await db.insert(voiceSession).values({ id: "g7s", guildId: "g7", channelId: "c", joinedAt: at(-5_000) });
++		await db.insert(play).values([
++			{ id: "g7a", guildId: "g7", title: "radio", lengthMs: 0, isStream: true, startedAt: at(0) },
++			{ id: "g7b", guildId: "g7", title: "x", lengthMs: 200_000, startedAt: at(300_000) },
++		]);
++		await db.insert(voiceSession).values({ id: "g8s", guildId: "g8", channelId: "c", joinedAt: at(7_000) });
++		await recorderFor(db).closeStale(at(1_000_000));
++		const [radio, x] = await plays("g7");
++		expect(radio.playedMs).toBe(300_000);
++		expect(x.playedMs).toBe(200_000);
++		const [s8] = await sessions("g8");
++		expect(s8.leftAt?.getTime()).toBe(T0 + 7_000);
++	});
++
++	test("a stream through the recorder: length 0, wall time, uncapped", async () => {
++		const r = recorderFor(db);
++		await r.trackStarted("g9", track("radio", 0, true), at(0));
++		await r.trackEnded("g9", "stopped", at(900_000));
++		const [row] = await plays("g9");
++		expect(row.lengthMs).toBe(0);
++		expect(row.isStream).toBe(true);
++		expect(row.playedMs).toBe(900_000);
++	});
++
++	test("stopped within 3 s of the length is not a skip", () => {
++		expect(isSkipped("stopped", 198_000, 200_000, false)).toBe(false);
++		expect(isSkipped("stopped", 100_000, 200_000, false)).toBe(true);
++	});
++
++	test("overview and personal on an empty guild", async () => {
++		const o = await overview(db, "empty", "all");
++		expect(o.plays).toBe(0);
++		expect(o.playedMs).toBe(0);
++		expect(o.vcMs).toBe(0);
++		expect(o.joins).toBe(0);
++		expect(o.topSongs).toEqual([]);
++		expect(o.facts).toEqual({ mostSkipped: null, longestSessionMs: null, busiestHour: null, firstSong: null });
++		const p = await personal(db, "empty", "nobody", "week");
++		expect(p.plays).toBe(0);
++		expect(p.skipRate).toBeNull();
 +	});
 +});
