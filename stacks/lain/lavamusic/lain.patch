@@ -7,20 +7,271 @@ index 54d0b23c..75fd3268 100644
  import { type ClientOptions, GatewayIntentBits, Options, Sweepers } from "discord.js";
  import { env } from "./env";
  import Lavamusic from "./structures/Lavamusic";
+diff --git a/src/commands/config/Dj.ts b/src/commands/config/Dj.ts
+index a1caef04..c97d621d 100644
+--- a/src/commands/config/Dj.ts
++++ b/src/commands/config/Dj.ts
+@@ -17,7 +17,7 @@ export default class Dj extends Command {
+ 				examples: ["dj add @role", "dj remove @role", "dj clear", "dj toggle"],
+ 				usage: "dj",
+ 			},
+-			category: "general",
++			category: "config",
+ 			aliases: ["dj"],
+ 			cooldown: 3,
+ 			args: true,
+diff --git a/src/commands/config/Prefix.ts b/src/commands/config/Prefix.ts
+index c370e8cb..ef9c651f 100644
+--- a/src/commands/config/Prefix.ts
++++ b/src/commands/config/Prefix.ts
+@@ -17,7 +17,7 @@ export default class Prefix extends Command {
+ 				examples: ["prefix set !", "prefix reset"],
+ 				usage: "prefix",
+ 			},
+-			category: "general",
++			category: "config",
+ 			aliases: ["pre"],
+ 			cooldown: 3,
+ 			args: true,
+diff --git a/src/commands/info/About.ts b/src/commands/info/About.ts
+index b6f4295e..8d1c5db3 100644
+--- a/src/commands/info/About.ts
++++ b/src/commands/info/About.ts
+@@ -1,7 +1,6 @@
+-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+-import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+ 
+ export default class About extends Command {
+ 	constructor(client: Lavamusic) {
+@@ -25,7 +24,7 @@ export default class About extends Command {
+ 			},
+ 			permissions: {
+ 				dev: false,
+-				client: [SendMessages, ReadMessageHistory, ViewChannel, EmbedLinks],
++				client: [SendMessages, ReadMessageHistory, ViewChannel],
+ 				user: [],
+ 			},
+ 			slashCommand: true,
+@@ -33,50 +32,14 @@ export default class About extends Command {
+ 		});
+ 	}
+ 
+-	public async run(client: Lavamusic, ctx: Context): Promise<any> {
+-		const inviteButton = new ButtonBuilder()
+-			.setLabel(ctx.locale(I18N.buttons.invite))
+-			.setStyle(ButtonStyle.Link)
+-			.setURL(
+-				`https://discord.com/api/oauth2/authorize?client_id=${client.env.CLIENT_ID}&permissions=8&scope=bot%20applications.commands`,
+-			);
+-		const supportButton = new ButtonBuilder()
+-			.setLabel(ctx.locale(I18N.buttons.support))
+-			.setStyle(ButtonStyle.Link)
+-			.setURL("https://discord.gg/YQsGbTwPBx");
+-		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(inviteButton, supportButton);
+-		const embed = this.client
+-			.embed()
+-			.setAuthor({
+-				name: "Lavamusic",
+-				iconURL:
+-					"https://media.discordapp.net/attachments/876035356460462090/888434725235097610/20210820_124325.png",
+-			})
+-			.setThumbnail(
+-				"https://media.discordapp.net/attachments/876035356460462090/888434725235097610/20210820_124325.png",
+-			)
+-			.setColor(this.client.color.main)
+-			.addFields(
+-				{
+-					name: ctx.locale(I18N.commands.about.fields.repository),
+-					value: "[Here](https://github.com/bongodevs/lavamusic)",
+-					inline: true,
+-				},
+-				{
+-					name: ctx.locale(I18N.commands.about.fields.support),
+-					value: "[Here](https://discord.gg/jgGEbxFbyM)",
+-					inline: true,
+-				},
+-				{
+-					name: "\u200b",
+-					value: ctx.locale(I18N.commands.about.fields.description),
+-					inline: true,
+-				},
+-			);
++	// lain: short and quiet, no invite or support links
++	public async run(_client: Lavamusic, ctx: Context): Promise<any> {
+ 		await ctx.sendMessage({
+-			content: "",
+-			embeds: [embed],
+-			components: [row],
++			content: [
++				"lain.fm",
++				"music bot for this server. start with `lain play <song>`, see `lain help`.",
++				"-# based on lavamusic · https://github.com/bongodevs/lavamusic",
++			].join("\n"),
+ 		});
+ 	}
+ }
+diff --git a/src/commands/info/Botinfo.ts b/src/commands/info/Botinfo.ts
+index a62b294b..e7482b57 100644
+--- a/src/commands/info/Botinfo.ts
++++ b/src/commands/info/Botinfo.ts
+@@ -1,9 +1,6 @@
+-import os from "node:os";
+-import { version } from "discord.js";
+-import { showTotalMemory, usagePercent } from "node-system-stats";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+-import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+ 
+ export default class Botinfo extends Command {
+ 	constructor(client: Lavamusic) {
+@@ -15,7 +12,7 @@ export default class Botinfo extends Command {
+ 				usage: "botinfo",
+ 			},
+ 			category: "info",
+-			aliases: ["bi", "info", "stats", "status"],
++			aliases: ["bi", "info", "status"],
+ 			cooldown: 3,
+ 			args: false,
+ 			vote: false,
+@@ -27,7 +24,7 @@ export default class Botinfo extends Command {
+ 			},
+ 			permissions: {
+ 				dev: false,
+-				client: [SendMessages, ReadMessageHistory, ViewChannel, EmbedLinks],
++				client: [SendMessages, ReadMessageHistory, ViewChannel],
+ 				user: [],
+ 			},
+ 			slashCommand: true,
+@@ -35,51 +32,23 @@ export default class Botinfo extends Command {
+ 		});
+ 	}
+ 
++	// lain: only what matters in discord, nothing about the host
+ 	public async run(client: Lavamusic, ctx: Context): Promise<any> {
+-		const osInfo = `${os.type()} ${os.release()}`;
+-		const osUptime = client.utils.formatTime(os.uptime() * 1000);
+-		const osHostname = os.hostname();
+-		const cpuInfo = `${os.arch()} (${os.cpus().length} cores)`;
+-		const cpuUsed = (await usagePercent({ coreIndex: 0, sampleMs: 2000 })).percent;
+-		const memTotal = showTotalMemory(true);
+-		const memUsed = (process.memoryUsage().rss / 1024 ** 2).toFixed(2);
+-		const nodeVersion = process.version;
+-		const discordJsVersion = version;
+-		const commands = client.commands.size;
++		const counts = await client.shard?.broadcastEval((c) => c.guilds.cache.size);
++		const servers = counts ? counts.reduce((a, n) => a + n, 0) : client.guilds.cache.size;
++		const nodes = [...client.manager.nodeManager.nodes.values()];
++		const up = nodes.filter((n) => n.connected).length;
++		const playing = nodes.reduce((a, n) => a + (n.stats?.playingPlayers ?? 0), 0);
++		const commands = client.commands.filter((c) => !["dev", "filters", "playlist"].includes(c.category)).size;
+ 
+-		const promises = [
+-			client.shard?.broadcastEval((client) => client.guilds.cache.size),
+-			client.shard?.broadcastEval((client) =>
+-				client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
+-			),
+-			client.shard?.broadcastEval((client) => client.channels.cache.size),
+-		];
+-		return Promise.all(promises).then(async (results) => {
+-			const guilds = results[0]?.reduce((acc, guildCount) => acc + guildCount, 0);
+-			const users = results[1]?.reduce((acc, memberCount) => acc + memberCount, 0);
+-			const channels = results[2]?.reduce((acc, channelCount) => acc + channelCount, 0);
+-
+-			const botInfo = ctx.locale(I18N.commands.botinfo.content, {
+-				osInfo,
+-				osUptime,
+-				osHostname,
+-				cpuInfo,
+-				cpuUsed,
+-				memUsed,
+-				memTotal,
+-				nodeVersion,
+-				discordJsVersion,
+-				guilds,
+-				channels,
+-				users,
+-				commands,
+-			});
+-
+-			const embed = this.client.embed().setColor(this.client.color.main).setDescription(botInfo);
+-
+-			return await ctx.sendMessage({
+-				embeds: [embed],
+-			});
++		await ctx.sendMessage({
++			content: [
++				"lain.fm",
++				`up ${client.utils.formatTime(client.uptime ?? 0)} · ping ${Math.round(client.ws.ping)}ms`,
++				`servers ${servers} · playing in ${playing}`,
++				`lavalink ${up === nodes.length && up > 0 ? "ok" : `${up}/${nodes.length} up`}`,
++				`commands ${commands}`,
++			].join("\n"),
+ 		});
+ 	}
+ }
 diff --git a/src/commands/info/Help.ts b/src/commands/info/Help.ts
-index 99ff8602..f2c0df42 100644
+index 99ff8602..9fe25273 100644
 --- a/src/commands/info/Help.ts
 +++ b/src/commands/info/Help.ts
-@@ -42,7 +42,8 @@ export default class Help extends Command {
+@@ -41,8 +41,10 @@ export default class Help extends Command {
+ 
  	public async run(client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
  		const embed = this.client.embed();
- 		const guild = await client.db.get(ctx.guild.id);
+-		const guild = await client.db.get(ctx.guild.id);
 -		const commands = this.client.commands.filter((cmd) => cmd.category !== "dev");
++		// lain: always show "lain" in help, the server prefix (tanya) keeps working
++		const shown = "lain ";
 +		const hidden = ["dev", "filters", "playlist"];
 +		const commands = this.client.commands.filter((cmd) => !hidden.includes(cmd.category));
  		const categories = [...new Set(commands.map((cmd) => cmd.category))];
  
  		if (args[0]) {
+@@ -64,9 +66,9 @@ export default class Help extends Command {
+ 				.setDescription(
+ 					ctx.locale(I18N.commands.help.help_cmd, {
+ 						description: ctx.locale(command.description.content),
+-						usage: `${guild?.prefix}${command.description.usage}`,
++						usage: `${shown}${command.description.usage}`,
+ 						examples: command.description.examples
+-							.map((example: string) => `${guild.prefix}${example}`)
++							.map((example: string) => `${shown}${example}`)
+ 							.join(", "),
+ 						aliases: command.aliases.map((alias: string) => `\`${alias}\``).join(", "),
+ 						category: command.category,
+@@ -104,15 +106,7 @@ export default class Help extends Command {
+ 		const helpEmbed = embed
+ 			.setColor(client.color.main)
+ 			.setTitle(ctx.locale(I18N.commands.help.title))
+-			.setDescription(
+-				ctx.locale(I18N.commands.help.content, {
+-					bot: client.user?.username,
+-					prefix: guild.prefix,
+-				}),
+-			)
+-			.setFooter({
+-				text: ctx.locale(I18N.commands.help.footer, { prefix: guild.prefix }),
+-			})
++			.setDescription("`lain help <command>` shows more about one command.")
+ 			.addFields(...fields);
+ 
+ 		return await ctx.sendMessage({ embeds: [helpEmbed] });
+diff --git a/src/commands/info/Ping.ts b/src/commands/info/Ping.ts
+index 26e0d132..3701bdaa 100644
+--- a/src/commands/info/Ping.ts
++++ b/src/commands/info/Ping.ts
+@@ -11,7 +11,7 @@ export default class Ping extends Command {
+ 				examples: ["ping"],
+ 				usage: "ping",
+ 			},
+-			category: "general",
++			category: "info",
+ 			aliases: ["pong"],
+ 			cooldown: 3,
+ 			args: false,
 diff --git a/src/commands/music/Back.ts b/src/commands/music/Back.ts
 new file mode 100644
 index 00000000..08c353cb
@@ -130,6 +381,19 @@ index 8dcaf58c..53cf5d0b 100644
  			cooldown: 3,
  			args: false,
  			vote: false,
+diff --git a/src/commands/music/Loop.ts b/src/commands/music/Loop.ts
+index 684e41b0..b9c135c1 100644
+--- a/src/commands/music/Loop.ts
++++ b/src/commands/music/Loop.ts
+@@ -11,7 +11,7 @@ export default class Loop extends Command {
+ 				examples: ["loop off", "loop queue", "loop song"],
+ 				usage: "loop",
+ 			},
+-			category: "general",
++			category: "music",
+ 			aliases: ["loop"],
+ 			cooldown: 3,
+ 			args: false,
 diff --git a/src/commands/music/Play.ts b/src/commands/music/Play.ts
 index fe7b01d5..88ca90b1 100644
 --- a/src/commands/music/Play.ts
@@ -257,7 +521,7 @@ index df9533b4..85c7d008 100644
  			args: true,
  			vote: false,
 diff --git a/src/commands/music/Skip.ts b/src/commands/music/Skip.ts
-index 1da191d2..78b5a756 100644
+index 1da191d2..0445d9da 100644
 --- a/src/commands/music/Skip.ts
 +++ b/src/commands/music/Skip.ts
 @@ -12,7 +12,7 @@ export default class Skip extends Command {
@@ -269,16 +533,48 @@ index 1da191d2..78b5a756 100644
  			cooldown: 3,
  			args: false,
  			vote: true,
+@@ -66,6 +66,6 @@ export default class Skip extends Command {
+ 				],
+ 			});
+ 		}
+-		ctx.message?.react("👍");
++		ctx.message?.react("⏭️");
+ 	}
+ }
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..99b72a07 100644
+index 7a3732e7..a55fe09b 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
-@@ -1,3 +1,4 @@
+@@ -1,3 +1,5 @@
 +import { closest } from "../../lain/typo";
++import { track, untracked } from "../../lain/replies";
  import {
  	ActionRowBuilder,
  	ButtonBuilder,
-@@ -48,7 +49,8 @@ export default class MessageCreate extends Event {
+@@ -22,7 +24,12 @@ export default class MessageCreate extends Event {
+ 		});
+ 	}
+ 
+-	public async run(message: Message): Promise<any> {
++	// lain: remember what lain sends for this message, so deleting it deletes the replies
++	public run(message: Message): Promise<any> {
++		return track(message.id, () => this.handle(message));
++	}
++
++	private async handle(message: Message): Promise<any> {
+ 		if (message.author.bot) return;
+ 		if (!(message.guild && message.guildId)) return;
+ 
+@@ -33,7 +40,7 @@ export default class MessageCreate extends Event {
+ 		]);
+ 
+ 		if (setup && setup.textId === message.channelId) {
+-			return this.client.emit("setupSystem", message);
++			return untracked(() => this.client.emit("setupSystem", message)); // lain: the setup channel deletes requests itself
+ 		}
+ 		const mention = new RegExp(`^<@!?${this.client.user?.id}>( |)$`);
+ 		if (mention.test(message.content)) {
+@@ -48,7 +55,8 @@ export default class MessageCreate extends Event {
  
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  		const prefixRegex = new RegExp(
@@ -288,7 +584,7 @@ index 7a3732e7..99b72a07 100644
  		);
  		if (!prefixRegex.test(message.content)) return;
  		const match = message.content.match(prefixRegex);
-@@ -60,7 +62,20 @@ export default class MessageCreate extends Event {
+@@ -60,7 +68,20 @@ export default class MessageCreate extends Event {
  		const command =
  			this.client.commands.get(cmd) ||
  			this.client.commands.get(this.client.aliases.get(cmd) as string);
@@ -310,6 +606,23 @@ index 7a3732e7..99b72a07 100644
  
  		const ctx = new Context(message, args);
  		ctx.guildLocale = locale;
+diff --git a/src/events/client/Raw.ts b/src/events/client/Raw.ts
+index ea0d03cc..7e202b7c 100644
+--- a/src/events/client/Raw.ts
++++ b/src/events/client/Raw.ts
+@@ -1,4 +1,5 @@
+ import { Event, type Lavamusic } from "../../structures/index";
++import { onRaw } from "../../lain/replies";
+ import { LavamusicEventType } from "../../types/events";
+ 
+ export default class Raw extends Event {
+@@ -14,5 +15,6 @@ export default class Raw extends Event {
+ 
+ 	public async run(d: any): Promise<void> {
+ 		this.client.manager.sendRawData(d);
++		onRaw(this.client, d); // lain: delete replies with their command
+ 	}
+ }
 diff --git a/src/events/player/QueueEnd.ts b/src/events/player/QueueEnd.ts
 index 6c7c9da6..996fbc7d 100644
 --- a/src/events/player/QueueEnd.ts
@@ -725,6 +1038,61 @@ index 00000000..5d7bc796
 +	self.options = options;
 +	return resolveBody.call(this);
 +};
+diff --git a/src/lain/replies.ts b/src/lain/replies.ts
+new file mode 100644
+index 00000000..2f6b4767
+--- /dev/null
++++ b/src/lain/replies.ts
+@@ -0,0 +1,49 @@
++// lain: when someone deletes their command message, delete what lain sent for it.
++// MessageCreate runs every command inside track(message); every channel.send (and
++// message.reply, which calls it) made in that async chain is remembered under the
++// command message id. raw MESSAGE_DELETE events then remove those replies
++// (the message cache is 0, so discord.js' own messageDelete never fires).
++import { AsyncLocalStorage } from "node:async_hooks";
++import { BaseGuildTextChannel, BaseGuildVoiceChannel, type Client, ThreadChannel } from "discord.js";
++
++const MAX = 500;
++const store = new AsyncLocalStorage<string>();
++const replies = new Map<string, { channelId: string; ids: string[] }>();
++
++export const track = <T>(messageId: string, fn: () => T): T => store.run(messageId, fn);
++export const untracked = <T>(fn: () => T): T => store.exit(fn);
++
++function remember(commandId: string, channelId: string, replyId: string) {
++	const entry = replies.get(commandId) ?? { channelId, ids: [] };
++	entry.ids.push(replyId);
++	replies.delete(commandId);
++	replies.set(commandId, entry);
++	if (replies.size > MAX) replies.delete(replies.keys().next().value!);
++}
++
++for (const cls of [BaseGuildTextChannel, BaseGuildVoiceChannel, ThreadChannel] as any[]) {
++	const send = cls.prototype.send;
++	if (typeof send !== "function" || send.__lain) continue;
++	const wrapped = async function (this: any, ...args: any[]) {
++		const commandId = store.getStore();
++		const sent = await send.apply(this, args);
++		if (commandId && sent?.id) remember(commandId, sent.channelId, sent.id);
++		return sent;
++	};
++	(wrapped as any).__lain = true;
++	cls.prototype.send = wrapped;
++}
++
++/** call with every raw gateway packet. */
++export function onRaw(client: Client, packet: any) {
++	const ids: string[] =
++		packet?.t === "MESSAGE_DELETE" ? [packet.d.id] : packet?.t === "MESSAGE_DELETE_BULK" ? packet.d.ids : [];
++	for (const id of ids) {
++		const entry = replies.get(id);
++		if (!entry) continue;
++		replies.delete(id);
++		const channel = client.channels.cache.get(entry.channelId) as any;
++		if (!channel?.messages) continue;
++		for (const replyId of entry.ids) channel.messages.delete(replyId).catch(() => {});
++	}
++}
 diff --git a/src/lain/text.ts b/src/lain/text.ts
 new file mode 100644
 index 00000000..d2c8ec7c
