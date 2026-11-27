@@ -14,7 +14,8 @@ environment-specific details (ips, backup job, current inventory) are in `CLAUDE
 4. **ssh keys only.** never type, store, read out or forward passwords. don't print secrets (`.env`, `~/.hermes/.env`, `auth.json`, tailscale keys).
 5. **git: commit only as `13c37 <69517127+13c37@users.noreply.github.com>`**, no co-author/claude attribution.
    - **push without asking** when nothing can go down: docs, `.gitignore`, ci, read-only status scripts, small compose changes to non-critical stacks (homepage, uptime-kuma). say afterwards what was pushed.
-   - **ask before push** for anything that can take down the server, dns or the network: the adguard stack (every redeploy = short lan dns outage), the site stack (public site), jellyfin/adguard image bumps, network/firewall/tailscale, `deploy/`. never force-push, rewrite history or delete branches without asking.
+   - **ask before push** for anything that can take down the server, dns or the network: the adguard stack (every redeploy = short lan dns outage), the site stack (public site), jellyfin/adguard image bumps, network/firewall/tailscale, `deploy/`. never force-push or rewrite history without asking.
+   - **delete branches without asking** once their pr is merged into `main` and everything is fine (deploy ran, stack healthy): local and remote. ask before deleting unmerged branches. say afterwards what was deleted.
 6. **stacks are gitops.** change compose files here → push/pr → merge to `main`; ct 100 deploys on its own (`deploy/`, timer every 5 min, `git merge --ff-only`). **never edit files in `/opt/homelab` on the server**: that breaks the ff-only deploy. merging to `main` = deploying.
 7. **site stack:** always `docker compose up -d --force-recreate` (caddy shares the namespace of the tailscale sidecar).
 8. **this repo is public:** never commit ips, hostnames from the lan, tailnet names or secrets. those go in `.env` (server) or `CLAUDE.local.md` (here).
