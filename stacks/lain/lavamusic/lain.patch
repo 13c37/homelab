@@ -542,15 +542,39 @@ index 1da191d2..0445d9da 100644
  	}
  }
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..99b72a07 100644
+index 7a3732e7..a55fe09b 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
-@@ -1,3 +1,4 @@
+@@ -1,3 +1,5 @@
 +import { closest } from "../../lain/typo";
++import { track, untracked } from "../../lain/replies";
  import {
  	ActionRowBuilder,
  	ButtonBuilder,
-@@ -48,7 +49,8 @@ export default class MessageCreate extends Event {
+@@ -22,7 +24,12 @@ export default class MessageCreate extends Event {
+ 		});
+ 	}
+ 
+-	public async run(message: Message): Promise<any> {
++	// lain: remember what lain sends for this message, so deleting it deletes the replies
++	public run(message: Message): Promise<any> {
++		return track(message.id, () => this.handle(message));
++	}
++
++	private async handle(message: Message): Promise<any> {
+ 		if (message.author.bot) return;
+ 		if (!(message.guild && message.guildId)) return;
+ 
+@@ -33,7 +40,7 @@ export default class MessageCreate extends Event {
+ 		]);
+ 
+ 		if (setup && setup.textId === message.channelId) {
+-			return this.client.emit("setupSystem", message);
++			return untracked(() => this.client.emit("setupSystem", message)); // lain: the setup channel deletes requests itself
+ 		}
+ 		const mention = new RegExp(`^<@!?${this.client.user?.id}>( |)$`);
+ 		if (mention.test(message.content)) {
+@@ -48,7 +55,8 @@ export default class MessageCreate extends Event {
  
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  		const prefixRegex = new RegExp(
@@ -560,7 +584,7 @@ index 7a3732e7..99b72a07 100644
  		);
  		if (!prefixRegex.test(message.content)) return;
  		const match = message.content.match(prefixRegex);
-@@ -60,7 +62,20 @@ export default class MessageCreate extends Event {
+@@ -60,7 +68,20 @@ export default class MessageCreate extends Event {
  		const command =
  			this.client.commands.get(cmd) ||
  			this.client.commands.get(this.client.aliases.get(cmd) as string);
@@ -582,6 +606,23 @@ index 7a3732e7..99b72a07 100644
  
  		const ctx = new Context(message, args);
  		ctx.guildLocale = locale;
+diff --git a/src/events/client/Raw.ts b/src/events/client/Raw.ts
+index ea0d03cc..7e202b7c 100644
+--- a/src/events/client/Raw.ts
++++ b/src/events/client/Raw.ts
+@@ -1,4 +1,5 @@
+ import { Event, type Lavamusic } from "../../structures/index";
++import { onRaw } from "../../lain/replies";
+ import { LavamusicEventType } from "../../types/events";
+ 
+ export default class Raw extends Event {
+@@ -14,5 +15,6 @@ export default class Raw extends Event {
+ 
+ 	public async run(d: any): Promise<void> {
+ 		this.client.manager.sendRawData(d);
++		onRaw(this.client, d); // lain: delete replies with their command
+ 	}
+ }
 diff --git a/src/events/player/QueueEnd.ts b/src/events/player/QueueEnd.ts
 index 6c7c9da6..996fbc7d 100644
 --- a/src/events/player/QueueEnd.ts
@@ -997,6 +1038,61 @@ index 00000000..5d7bc796
 +	self.options = options;
 +	return resolveBody.call(this);
 +};
+diff --git a/src/lain/replies.ts b/src/lain/replies.ts
+new file mode 100644
+index 00000000..2f6b4767
+--- /dev/null
++++ b/src/lain/replies.ts
+@@ -0,0 +1,49 @@
++// lain: when someone deletes their command message, delete what lain sent for it.
++// MessageCreate runs every command inside track(message); every channel.send (and
++// message.reply, which calls it) made in that async chain is remembered under the
++// command message id. raw MESSAGE_DELETE events then remove those replies
++// (the message cache is 0, so discord.js' own messageDelete never fires).
++import { AsyncLocalStorage } from "node:async_hooks";
++import { BaseGuildTextChannel, BaseGuildVoiceChannel, type Client, ThreadChannel } from "discord.js";
++
++const MAX = 500;
++const store = new AsyncLocalStorage<string>();
++const replies = new Map<string, { channelId: string; ids: string[] }>();
++
++export const track = <T>(messageId: string, fn: () => T): T => store.run(messageId, fn);
++export const untracked = <T>(fn: () => T): T => store.exit(fn);
++
++function remember(commandId: string, channelId: string, replyId: string) {
++	const entry = replies.get(commandId) ?? { channelId, ids: [] };
++	entry.ids.push(replyId);
++	replies.delete(commandId);
++	replies.set(commandId, entry);
++	if (replies.size > MAX) replies.delete(replies.keys().next().value!);
++}
++
++for (const cls of [BaseGuildTextChannel, BaseGuildVoiceChannel, ThreadChannel] as any[]) {
++	const send = cls.prototype.send;
++	if (typeof send !== "function" || send.__lain) continue;
++	const wrapped = async function (this: any, ...args: any[]) {
++		const commandId = store.getStore();
++		const sent = await send.apply(this, args);
++		if (commandId && sent?.id) remember(commandId, sent.channelId, sent.id);
++		return sent;
++	};
++	(wrapped as any).__lain = true;
++	cls.prototype.send = wrapped;
++}
++
++/** call with every raw gateway packet. */
++export function onRaw(client: Client, packet: any) {
++	const ids: string[] =
++		packet?.t === "MESSAGE_DELETE" ? [packet.d.id] : packet?.t === "MESSAGE_DELETE_BULK" ? packet.d.ids : [];
++	for (const id of ids) {
++		const entry = replies.get(id);
++		if (!entry) continue;
++		replies.delete(id);
++		const channel = client.channels.cache.get(entry.channelId) as any;
++		if (!channel?.messages) continue;
++		for (const replyId of entry.ids) channel.messages.delete(replyId).catch(() => {});
++	}
++}
 diff --git a/src/lain/text.ts b/src/lain/text.ts
 new file mode 100644
 index 00000000..d2c8ec7c
