@@ -21,6 +21,102 @@ index 99ff8602..f2c0df42 100644
  		const categories = [...new Set(commands.map((cmd) => cmd.category))];
  
  		if (args[0]) {
+diff --git a/src/commands/music/Back.ts b/src/commands/music/Back.ts
+new file mode 100644
+index 00000000..08c353cb
+--- /dev/null
++++ b/src/commands/music/Back.ts
+@@ -0,0 +1,41 @@
++import { Command, type Context, type Lavamusic } from "../../structures/index";
++import { link, queueAgain } from "../../lain/again";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++
++// lain: play the song before this one. what's playing now goes next in the queue.
++export default class Back extends Command {
++	constructor(client: Lavamusic) {
++		super(client, {
++			name: "back",
++			description: {
++				content: "play the previous song",
++				examples: ["back"],
++				usage: "back",
++			},
++			category: "music",
++			aliases: ["previous", "prev", "b"],
++			cooldown: 3,
++			args: false,
++			vote: false,
++			player: { voice: true, dj: false, active: false, djPerm: null },
++			permissions: { dev: false, client: [SendMessages, ReadMessageHistory, ViewChannel], user: [] },
++			slashCommand: false,
++			options: [],
++		});
++	}
++
++	public async run(client: Lavamusic, ctx: Context): Promise<any> {
++		const player = client.manager.getPlayer(ctx.guild.id);
++		const prev = player ? await player.queue.shiftPrevious() : null;
++		if (!player || !prev) return await ctx.sendMessage("nothing before this.");
++
++		const current = player.queue.current;
++		if (current) {
++			await player.queue.add(current, 0);
++			await player.play({ clientTrack: prev, paused: false });
++			return await ctx.sendMessage(`back to ${link(prev)}. ${link(current)} is next.`);
++		}
++		await queueAgain(player, prev);
++		return await ctx.sendMessage(`back to ${link(prev)}.`);
++	}
++}
+diff --git a/src/commands/music/Last.ts b/src/commands/music/Last.ts
+new file mode 100644
+index 00000000..cd8ea8b6
+--- /dev/null
++++ b/src/commands/music/Last.ts
+@@ -0,0 +1,43 @@
++import { Command, type Context, type Lavamusic } from "../../structures/index";
++import { link } from "../../lain/again";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++
++const SHOW = 5;
++
++// lain: "what was that song?" now playing plus the last few, with links.
++export default class Last extends Command {
++	constructor(client: Lavamusic) {
++		super(client, {
++			name: "last",
++			description: {
++				content: "show what's playing and the last few songs",
++				examples: ["last"],
++				usage: "last",
++			},
++			category: "music",
++			aliases: ["what", "history", "recent"],
++			cooldown: 3,
++			args: false,
++			vote: false,
++			player: { voice: false, dj: false, active: false, djPerm: null },
++			permissions: { dev: false, client: [SendMessages, ReadMessageHistory, ViewChannel], user: [] },
++			slashCommand: false,
++			options: [],
++		});
++	}
++
++	public async run(client: Lavamusic, ctx: Context): Promise<any> {
++		const player = client.manager.getPlayer(ctx.guild.id);
++		const current = player?.queue.current;
++		const before = (player?.queue.previous ?? []).slice(0, SHOW);
++		if (!current && before.length === 0) return await ctx.sendMessage("nothing played yet.");
++
++		const lines: string[] = [];
++		if (current) lines.push(`now: ${link(current)} · ${current.info.author}`);
++		if (before.length) {
++			lines.push(current ? "before that:" : "last played:");
++			before.forEach((t, i) => lines.push(`${i + 1}. ${link(t)} · ${t.info.author}`));
++		}
++		return await ctx.sendMessage(lines.join("\n"));
++	}
++}
 diff --git a/src/commands/music/Leave.ts b/src/commands/music/Leave.ts
 index 8dcaf58c..53cf5d0b 100644
 --- a/src/commands/music/Leave.ts
@@ -61,6 +157,92 @@ index fe7b01d5..88ca90b1 100644
  			return await ctx.editMessage({
  				content: "",
  				embeds: [
+diff --git a/src/commands/music/Repeat.ts b/src/commands/music/Repeat.ts
+new file mode 100644
+index 00000000..de978dbe
+--- /dev/null
++++ b/src/commands/music/Repeat.ts
+@@ -0,0 +1,48 @@
++import { Command, type Context, type Lavamusic } from "../../structures/index";
++import { link, lastPlayed, queueAgain } from "../../lain/again";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++
++// lain: "repeat" while a song plays toggles looping it. after the queue ended it
++// plays the last song again and loops it.
++export default class Repeat extends Command {
++	constructor(client: Lavamusic) {
++		super(client, {
++			name: "repeat",
++			description: {
++				content: "loop the current song, or play the last one again on loop",
++				examples: ["repeat"],
++				usage: "repeat",
++			},
++			category: "music",
++			aliases: ["again", "nochmal", "once", "rep"],
++			cooldown: 3,
++			args: false,
++			vote: false,
++			player: { voice: true, dj: false, active: false, djPerm: null },
++			permissions: { dev: false, client: [SendMessages, ReadMessageHistory, ViewChannel], user: [] },
++			slashCommand: false,
++			options: [],
++		});
++	}
++
++	public async run(client: Lavamusic, ctx: Context): Promise<any> {
++		const player = client.manager.getPlayer(ctx.guild.id);
++		if (!player) return await ctx.sendMessage("nothing to repeat. play something first.");
++
++		const current = player.queue.current;
++		if (current) {
++			if (player.repeatMode === "track") {
++				await player.setRepeatMode("off");
++				return await ctx.sendMessage(`stopped looping ${link(current)}.`);
++			}
++			await player.setRepeatMode("track");
++			return await ctx.sendMessage(`looping ${link(current)}. \`lain repeat\` again to stop.`);
++		}
++
++		const last = lastPlayed(player);
++		if (!last) return await ctx.sendMessage("nothing to repeat. play something first.");
++		await player.setRepeatMode("track");
++		await queueAgain(player, last);
++		return await ctx.sendMessage(`again: ${link(last)}, on loop. \`lain repeat\` to stop looping.`);
++	}
++}
+diff --git a/src/commands/music/Replay.ts b/src/commands/music/Replay.ts
+index ca675178..36941ad5 100644
+--- a/src/commands/music/Replay.ts
++++ b/src/commands/music/Replay.ts
+@@ -1,3 +1,4 @@
++import { link, lastPlayed, queueAgain } from "../../lain/again";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+ import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+@@ -19,7 +20,7 @@ export default class Replay extends Command {
+ 			player: {
+ 				voice: true,
+ 				dj: false,
+-				active: true,
++				active: false,
+ 				djPerm: null,
+ 			},
+ 			permissions: {
+@@ -36,6 +37,13 @@ export default class Replay extends Command {
+ 		const player = client.manager.getPlayer(ctx.guild.id);
+ 		const embed = this.client.embed();
+ 		if (!player) return await ctx.sendMessage(ctx.locale(I18N.events.message.no_music_playing));
++		// lain: after the queue ended, replay = play the last song once more
++		const last = lastPlayed(player);
++		if (last) {
++			await queueAgain(player, last);
++			return await ctx.sendMessage(`again: ${link(last)}.`);
++		}
++		if (!player.queue.current) return await ctx.sendMessage(ctx.locale(I18N.events.message.no_music_playing));
+ 		if (!player.queue.current?.info.isSeekable) {
+ 			return await ctx.sendMessage({
+ 				embeds: [
 diff --git a/src/commands/music/Seek.ts b/src/commands/music/Seek.ts
 index df9533b4..85c7d008 100644
 --- a/src/commands/music/Seek.ts
@@ -75,7 +257,7 @@ index df9533b4..85c7d008 100644
  			args: true,
  			vote: false,
 diff --git a/src/commands/music/Skip.ts b/src/commands/music/Skip.ts
-index 1da191d2..0a0a1d9f 100644
+index 1da191d2..78b5a756 100644
 --- a/src/commands/music/Skip.ts
 +++ b/src/commands/music/Skip.ts
 @@ -12,7 +12,7 @@ export default class Skip extends Command {
@@ -83,15 +265,20 @@ index 1da191d2..0a0a1d9f 100644
  			},
  			category: "music",
 -			aliases: ["sk"],
-+			aliases: ["sk", "s"],
++			aliases: ["sk", "s", "next", "n"],
  			cooldown: 3,
  			args: false,
  			vote: true,
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..e54622f7 100644
+index 7a3732e7..99b72a07 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
-@@ -48,7 +48,8 @@ export default class MessageCreate extends Event {
+@@ -1,3 +1,4 @@
++import { closest } from "../../lain/typo";
+ import {
+ 	ActionRowBuilder,
+ 	ButtonBuilder,
+@@ -48,7 +49,8 @@ export default class MessageCreate extends Event {
  
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  		const prefixRegex = new RegExp(
@@ -101,6 +288,61 @@ index 7a3732e7..e54622f7 100644
  		);
  		if (!prefixRegex.test(message.content)) return;
  		const match = message.content.match(prefixRegex);
+@@ -60,7 +62,20 @@ export default class MessageCreate extends Event {
+ 		const command =
+ 			this.client.commands.get(cmd) ||
+ 			this.client.commands.get(this.client.aliases.get(cmd) as string);
+-		if (!command) return;
++		if (!command) {
++			// lain: near-miss command → suggest the right one instead of staying silent
++			const words = new Map<string, string>();
++			for (const c of this.client.commands.values()) {
++				if (c.category === "dev") continue;
++				for (const w of [c.name, ...c.aliases]) words.set(w, c.name);
++			}
++			const guess = closest(cmd, words.keys());
++			if (guess) {
++				const name = words.get(guess);
++				await message.reply({ content: `did you mean \`lain ${name}\`?`, allowedMentions: { repliedUser: false } }).catch(() => {});
++			}
++			return;
++		}
+ 
+ 		const ctx = new Context(message, args);
+ 		ctx.guildLocale = locale;
+diff --git a/src/events/player/QueueEnd.ts b/src/events/player/QueueEnd.ts
+index 6c7c9da6..996fbc7d 100644
+--- a/src/events/player/QueueEnd.ts
++++ b/src/events/player/QueueEnd.ts
+@@ -3,6 +3,7 @@ import type { Player, Track, TrackStartEvent } from "lavalink-client";
+ import { Event, type Lavamusic } from "../../structures/index";
+ import { LavamusicEventType } from "../../types/events";
+ import { updateSetup } from "../../utils/SetupSystem";
++import { offerAgain } from "../../lain/againButton";
+ 
+ export default class QueueEnd extends Event {
+ 	constructor(client: Lavamusic, file: string) {
+@@ -12,7 +13,7 @@ export default class QueueEnd extends Event {
+ 		});
+ 	}
+ 
+-	public async run(player: Player, _track: Track | null, _payload: TrackStartEvent): Promise<void> {
++	public async run(player: Player, track: Track | null, _payload: TrackStartEvent): Promise<void> {
+ 		const guild = this.client.guilds.cache.get(player.guildId);
+ 		if (!guild) return;
+ 		const locale = await this.client.db.getLanguage(player.guildId);
+@@ -33,10 +34,6 @@ export default class QueueEnd extends Event {
+ 		});
+ 		if (!message) return;
+ 
+-		if (message.editable) {
+-			await message.edit({ components: [] }).catch(() => {
+-				null;
+-			});
+-		}
++		if (message.editable) await offerAgain(this.client, player, message, track);
+ 	}
+ }
 diff --git a/src/events/player/TrackStart.ts b/src/events/player/TrackStart.ts
 index 0e77103f..8b787ed6 100644
 --- a/src/events/player/TrackStart.ts
@@ -130,6 +372,89 @@ index 0e77103f..8b787ed6 100644
  			});
  
  			player.set("messageId", message.id);
+diff --git a/src/lain/again.ts b/src/lain/again.ts
+new file mode 100644
+index 00000000..56e6d7db
+--- /dev/null
++++ b/src/lain/again.ts
+@@ -0,0 +1,25 @@
++// lain: play things again. after the queue ends lavalink-client sets queue.current
++// to null and puts the finished track at queue.previous[0]; while a song plays,
++// queue.previous[0] is the one before it.
++import type { Player, Track } from "lavalink-client";
++import { applyFairPlayToQueue } from "../utils/functions/player";
++
++export const link = (t: Track) => `[${t.info.title}](${t.info.uri})`;
++
++/** the song that just finished (only when nothing is playing). */
++export function lastPlayed(player: Player): Track | undefined {
++	if (player.queue.current) return undefined;
++	return player.queue.previous[0] as Track | undefined;
++}
++
++/** add a track and start playing if idle. returns true when it starts right away. */
++export async function queueAgain(player: Player, track: Track): Promise<boolean> {
++	if (!player.connected) await player.connect();
++	await player.queue.add(track);
++	if (player.get<boolean>("fairplay")) await applyFairPlayToQueue(player);
++	if (!player.playing && !player.queue.current) {
++		await player.play({ paused: false });
++		return true;
++	}
++	return false;
++}
+diff --git a/src/lain/againButton.ts b/src/lain/againButton.ts
+new file mode 100644
+index 00000000..69820ba5
+--- /dev/null
++++ b/src/lain/againButton.ts
+@@ -0,0 +1,46 @@
++// lain: when the queue ends, the last "playing: …" line gets a ↻ button that plays
++// that song again. only people in the bot's voice channel can press it.
++import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type Message, MessageFlags } from "discord.js";
++import type { Player, Track } from "lavalink-client";
++import type { Lavamusic } from "../structures/index";
++import { lastPlayed, link, queueAgain } from "./again";
++import { keepComponents } from "./text";
++
++const WAIT_MS = 15 * 60_000;
++const ID = "lain-again";
++
++export async function offerAgain(client: Lavamusic, player: Player, message: Message, ended?: Track | null): Promise<void> {
++	const track = lastPlayed(player) ?? ended ?? undefined;
++	const content = message.content;
++	if (!track) {
++		await message.edit({ content, components: [] }).catch(() => {});
++		return;
++	}
++	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
++		new ButtonBuilder().setCustomId(ID).setLabel("↻ again").setStyle(ButtonStyle.Secondary),
++	);
++	const sent = await message.edit({ content, components: keepComponents([row]) }).catch(() => null);
++	if (!sent) return;
++
++	const collector = sent.createMessageComponentCollector({
++		filter: (i: any) => i.customId === ID,
++		time: WAIT_MS,
++	});
++	collector.on("collect", async (i: any) => {
++		const now = client.manager.getPlayer(player.guildId);
++		const voice = i.member?.voice?.channelId;
++		if (!now || !voice || voice !== now.voiceChannelId) {
++			await i.reply({ content: "join my voice channel first.", flags: MessageFlags.Ephemeral }).catch(() => {});
++			return;
++		}
++		await i.deferUpdate().catch(() => {});
++		collector.stop("used");
++		const started = await queueAgain(now, track);
++		await i
++			.followUp({ content: `${i.user.username}: ${started ? "again" : "queued again"}: ${link(track)}.` })
++			.catch(() => {});
++	});
++	collector.on("end", async () => {
++		await sent.edit({ content, components: [] }).catch(() => {});
++	});
++}
 diff --git a/src/lain/alt.ts b/src/lain/alt.ts
 new file mode 100644
 index 00000000..90465f66
@@ -495,4 +820,47 @@ index 00000000..d2c8ec7c
 +		out.content = "…"; // discord rejects empty messages
 +	}
 +	return out;
++}
+diff --git a/src/lain/typo.ts b/src/lain/typo.ts
+new file mode 100644
+index 00000000..e1b78c64
+--- /dev/null
++++ b/src/lain/typo.ts
+@@ -0,0 +1,37 @@
++// lain: "did you mean loop?" for near-miss commands. pure, no discord.js import.
++
++/** optimal string alignment distance (levenshtein + adjacent swaps). */
++export function distance(a: string, b: string): number {
++	const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
++	for (let j = 1; j <= b.length; j++) d[0][j] = j;
++	for (let i = 1; i <= a.length; i++) {
++		for (let j = 1; j <= b.length; j++) {
++			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
++			d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
++			if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
++				d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
++		}
++	}
++	return d[a.length][b.length];
++}
++
++/**
++ * the closest known word, or undefined. short words are left alone so normal
++ * chat after the prefix ("lain is cute") doesn't get corrected.
++ */
++export function closest(word: string, known: Iterable<string>): string | undefined {
++	const w = word.toLowerCase();
++	if (w.length < 3 || !/^[a-z]+$/.test(w)) return undefined;
++	const max = w.length <= 4 ? 1 : 2;
++	let best: string | undefined;
++	let bestD = max + 1;
++	for (const k of known) {
++		if (k.length < 3) continue;
++		const dist = distance(w, k);
++		if (dist < bestD) {
++			best = k;
++			bestD = dist;
++		}
++	}
++	return best;
 +}
