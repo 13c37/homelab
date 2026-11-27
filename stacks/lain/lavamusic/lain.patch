@@ -560,6 +560,110 @@ index 54d0b23c..75fd3268 100644
  import { type ClientOptions, GatewayIntentBits, Options, Sweepers } from "discord.js";
  import { env } from "./env";
  import Lavamusic from "./structures/Lavamusic";
+diff --git a/src/commands/config/247.ts b/src/commands/config/247.ts
+deleted file mode 100644
+index 81823fa0..00000000
+--- a/src/commands/config/247.ts
++++ /dev/null
+@@ -1,98 +0,0 @@
+-import type { GuildMember } from "discord.js";
+-import { I18N } from "../../structures/I18n";
+-import { Command, type Context, type Lavamusic } from "../../structures/index";
+-import logger from "../../structures/Logger";
+-import {
+-	EmbedLinks,
+-	ManageGuild,
+-	ReadMessageHistory,
+-	SendMessages,
+-	ViewChannel,
+-} from "../../utils/Permissions";
+-
+-export default class _247 extends Command {
+-	constructor(client: Lavamusic) {
+-		super(client, {
+-			name: "247",
+-			description: {
+-				content: I18N.commands[247].description,
+-				examples: ["247"],
+-				usage: "247",
+-			},
+-			category: "config",
+-			aliases: ["stay"],
+-			cooldown: 3,
+-			args: false,
+-			vote: true,
+-			player: {
+-				voice: true,
+-				dj: false,
+-				active: false,
+-				djPerm: null,
+-			},
+-			permissions: {
+-				dev: false,
+-				client: [SendMessages, ReadMessageHistory, ViewChannel, EmbedLinks],
+-				user: [ManageGuild],
+-			},
+-			slashCommand: true,
+-			options: [],
+-		});
+-	}
+-
+-	public async run(client: Lavamusic, ctx: Context): Promise<any> {
+-		const embed = this.client.embed();
+-		let player = client.manager.getPlayer(ctx.guild.id);
+-		try {
+-			const data = await client.db.get_247(ctx.guild.id);
+-			const member = ctx.member as GuildMember | null;
+-			if (!member?.voice?.channel) {
+-				return await ctx.sendMessage({
+-					embeds: [
+-						embed
+-							.setDescription(ctx.locale(I18N.commands[247].errors.not_in_voice))
+-							.setColor(client.color.red),
+-					],
+-				});
+-			}
+-			if (data) {
+-				await client.db.delete_247(ctx.guild.id);
+-				return await ctx.sendMessage({
+-					embeds: [
+-						embed
+-							.setDescription(ctx.locale(I18N.commands[247].messages.disabled))
+-							.setColor(client.color.red),
+-					],
+-				});
+-			}
+-			await client.db.set_247(ctx.guild.id, ctx.channel!.id, member.voice.channel.id);
+-			if (!player) {
+-				player = client.manager.createPlayer({
+-					guildId: ctx.guild.id,
+-					voiceChannelId: member.voice.channel.id,
+-					textChannelId: ctx.channel!.id,
+-					selfMute: false,
+-					selfDeaf: true,
+-					vcRegion: member.voice.channel.rtcRegion ?? undefined,
+-				});
+-			}
+-			if (!player.connected) await player.connect();
+-			return await ctx.sendMessage({
+-				embeds: [
+-					embed
+-						.setDescription(ctx.locale(I18N.commands[247].messages.enabled))
+-						.setColor(this.client.color.main),
+-				],
+-			});
+-		} catch (error) {
+-			logger.error("Error in 247 command:", error);
+-			return await ctx.sendMessage({
+-				embeds: [
+-					embed
+-						.setDescription(ctx.locale(I18N.commands[247].errors.generic))
+-						.setColor(client.color.red),
+-				],
+-			});
+-		}
+-	}
+-}
 diff --git a/src/commands/config/Dj.ts b/src/commands/config/Dj.ts
 index a1caef04..c97d621d 100644
 --- a/src/commands/config/Dj.ts
@@ -586,6 +690,26 @@ index c370e8cb..ef9c651f 100644
  			aliases: ["pre"],
  			cooldown: 3,
  			args: true,
+diff --git a/src/commands/index.ts b/src/commands/index.ts
+index d3d6c73d..e59bc411 100644
+--- a/src/commands/index.ts
++++ b/src/commands/index.ts
+@@ -2,7 +2,6 @@
+ // Run: bun run scripts/generate-registry.ts
+ // biome-ignore-all lint: generated file
+ 
+-import _247 from "./config/247";
+ import Dj from "./config/Dj";
+ import Language from "./config/Language";
+ import Prefix from "./config/Prefix";
+@@ -68,7 +67,6 @@ import RemoveSong from "./playlist/RemoveSong";
+ import Steal from "./playlist/Steal";
+ 
+ export const CommandList = [
+-	_247,
+ 	Dj,
+ 	Language,
+ 	Prefix,
 diff --git a/src/commands/info/About.ts b/src/commands/info/About.ts
 index b6f4295e..8d1c5db3 100644
 --- a/src/commands/info/About.ts
@@ -767,23 +891,27 @@ index a62b294b..e7482b57 100644
  	}
  }
 diff --git a/src/commands/info/Help.ts b/src/commands/info/Help.ts
-index 99ff8602..9fe25273 100644
+index 99ff8602..b34204e6 100644
 --- a/src/commands/info/Help.ts
 +++ b/src/commands/info/Help.ts
-@@ -41,8 +41,10 @@ export default class Help extends Command {
+@@ -1,3 +1,4 @@
++import { helpSections } from "../../lain/help";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+ import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+@@ -41,9 +42,8 @@ export default class Help extends Command {
  
  	public async run(client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
  		const embed = this.client.embed();
 -		const guild = await client.db.get(ctx.guild.id);
 -		const commands = this.client.commands.filter((cmd) => cmd.category !== "dev");
+-		const categories = [...new Set(commands.map((cmd) => cmd.category))];
 +		// lain: always show "lain" in help, the server prefix (tanya) keeps working
 +		const shown = "lain ";
-+		const hidden = ["dev", "filters", "playlist"];
-+		const commands = this.client.commands.filter((cmd) => !hidden.includes(cmd.category));
- 		const categories = [...new Set(commands.map((cmd) => cmd.category))];
  
  		if (args[0]) {
-@@ -64,9 +66,9 @@ export default class Help extends Command {
+ 			const command = this.client.commands.get(args[0].toLowerCase());
+@@ -64,9 +64,9 @@ export default class Help extends Command {
  				.setDescription(
  					ctx.locale(I18N.commands.help.help_cmd, {
  						description: ctx.locale(command.description.content),
@@ -795,7 +923,20 @@ index 99ff8602..9fe25273 100644
  							.join(", "),
  						aliases: command.aliases.map((alias: string) => `\`${alias}\``).join(", "),
  						category: command.category,
-@@ -104,15 +106,7 @@ export default class Help extends Command {
+@@ -92,27 +92,12 @@ export default class Help extends Command {
+ 			return await ctx.sendMessage({ embeds: [helpEmbed] });
+ 		}
+ 
+-		const fields = categories.map((category) => ({
+-			name: category,
+-			value: commands
+-				.filter((cmd) => cmd.category === category)
+-				.map((cmd) => `\`${cmd.name}\``)
+-				.join(", "),
+-			inline: false,
+-		}));
++		const fields = helpSections(this.client.commands.values()).map((s) => ({ ...s, inline: false }));
+ 
  		const helpEmbed = embed
  			.setColor(client.color.main)
  			.setTitle(ctx.locale(I18N.commands.help.title))
@@ -827,11 +968,11 @@ index 26e0d132..3701bdaa 100644
  			args: false,
 diff --git a/src/commands/info/Stats.ts b/src/commands/info/Stats.ts
 new file mode 100644
-index 00000000..9d35bcb8
+index 00000000..a20e6fe1
 --- /dev/null
 +++ b/src/commands/info/Stats.ts
-@@ -0,0 +1,75 @@
-+import { displayName, formatDuration, NO_MENTIONS, numbered, RANGE_LABEL, songLink, userIdFrom } from "../../lain/stats/format";
+@@ -0,0 +1,78 @@
++import { count, displayName, formatDuration, NO_MENTIONS, numbered, RANGE_LABEL, songLink, userIdFrom } from "../../lain/stats/format";
 +import { overview, parseRange, personal, statsDb } from "../../lain/stats/queries";
 +import { Command, type Context, type Lavamusic } from "../../structures/index";
 +import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
@@ -875,15 +1016,13 @@ index 00000000..9d35bcb8
 +			const name = await displayName(guild, userId);
 +			const p = await personal(db, guild.id, userId, range);
 +			if (p.plays === 0) return await send(`${name} hasn't played anything yet.`);
-+			const lines = [
-+				`stats for ${name} · ${RANGE_LABEL[range]}`,
-+				`${p.plays} songs · ${formatDuration(p.playedMs)} played` +
-+					(p.skipRate === null ? "" : ` · skips ${Math.round(p.skipRate * 100)}%`),
-+			];
-+			if (p.topSongs.length) lines.push(`top songs: ${numbered(p.topSongs.map((s) => `${songLink(s)} (${s.count})`))}`);
-+			if (p.topArtists.length) lines.push(`top artists: ${numbered(p.topArtists.map((a) => `${a.label} (${a.count})`))}`);
-+			if (p.firstSong) lines.push(`first song: ${p.firstSong.title}`);
-+			return await send(lines.join("\n"));
++			const summary = [count(p.plays, "song"), `**${formatDuration(p.playedMs)}** played`];
++			if (p.skipRate !== null) summary.push(`skips **${Math.round(p.skipRate * 100)}%**`);
++			const blocks = [`### stats for ${name} · ${RANGE_LABEL[range]}\n${summary.join(" · ")}`];
++			if (p.topSongs.length) blocks.push(section("top songs", p.topSongs.map((s) => `${songLink(s)} (${s.count})`)));
++			if (p.topArtists.length) blocks.push(section("top artists", p.topArtists.map((a) => `${a.label} (${a.count})`)));
++			if (p.firstSong) blocks.push(`-# first song: ${p.firstSong.title}`);
++			return await send(blocks.join("\n\n"));
 +		}
 +
 +		const o = await overview(db, guild.id, range);
@@ -894,18 +1033,23 @@ index 00000000..9d35bcb8
 +			f.mostSkipped && `most skipped: ${f.mostSkipped.label}`,
 +			f.longestSessionMs !== null && `longest session ${formatDuration(f.longestSessionMs)}`,
 +			f.busiestHour !== null && `busiest hour ${String(f.busiestHour).padStart(2, "0")}:00`,
-+			f.firstSong && `first song ${f.firstSong.title}`,
++			f.firstSong && `first song: ${f.firstSong.title}`,
 +		].filter(Boolean);
-+		const lines = [
-+			`lain stats · ${RANGE_LABEL[range]}`,
-+			`${o.plays} songs · ${formatDuration(o.playedMs)} played · ${formatDuration(o.vcMs)} in vc · joined ${o.joins} ${o.joins === 1 ? "time" : "times"}`,
++		const summary = [
++			count(o.plays, "song"),
++			`**${formatDuration(o.playedMs)}** played`,
++			`**${formatDuration(o.vcMs)}** in vc`,
++			`joined ${count(o.joins, "time")}`,
 +		];
-+		if (o.topSongs.length) lines.push(`top songs: ${numbered(o.topSongs.map((s) => `${songLink(s)} (${s.count})`))}`);
-+		if (people.length) lines.push(`top people: ${numbered(people)}`);
-+		if (facts.length) lines.push(facts.join(" · "));
-+		return await send(lines.join("\n"));
++		const blocks = [`### lain stats · ${RANGE_LABEL[range]}\n${summary.join(" · ")}`];
++		if (o.topSongs.length) blocks.push(section("top songs", o.topSongs.map((s) => `${songLink(s)} (${s.count})`)));
++		if (people.length) blocks.push(section("top people", people));
++		if (facts.length) blocks.push(`-# ${facts.join(" · ")}`);
++		return await send(blocks.join("\n\n"));
 +	}
 +}
++
++const section = (title: string, items: string[]) => `**${title}**\n${numbered(items)}`;
 diff --git a/src/commands/info/Top.ts b/src/commands/info/Top.ts
 new file mode 100644
 index 00000000..35f0eba6
@@ -1285,6 +1429,29 @@ index 47ab1204..32a111c6 100644
 +	},
 +	(table) => [index("voice_session_guild_joined").on(table.guildId, table.joinedAt)],
 +);
+diff --git a/src/database/server.ts b/src/database/server.ts
+index 8cf504a8..99086b30 100644
+--- a/src/database/server.ts
++++ b/src/database/server.ts
+@@ -1,4 +1,5 @@
+ import { getDatabase, type IDatabaseProvider } from "./index";
++import type { Stay } from "./types";
+ 
+ /**
+  * ServerData provides a backward-compatible API for database operations.
+@@ -83,9 +84,9 @@ export default class ServerData {
+ 		await provider.stays.delete(guildId);
+ 	}
+ 
+-	public async get_247(guildId?: string) {
+-		const provider = await this.getProvider();
+-		return provider.stays.get(guildId);
++	// lain: 24/7 is gone; ignore any saved stay so the bot never sticks in vc.
++	public async get_247(_guildId?: string): Promise<Stay | Stay[] | null> {
++		return null;
+ 	}
+ 
+ 	// -----------------------------
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
 index 7a3732e7..03162bc2 100644
 --- a/src/events/client/MessageCreate.ts
@@ -2055,6 +2222,40 @@ index 00000000..f885c7ae
 +	});
 +	return true;
 +}
+diff --git a/src/lain/help.ts b/src/lain/help.ts
+new file mode 100644
+index 00000000..6cde1bde
+--- /dev/null
++++ b/src/lain/help.ts
+@@ -0,0 +1,28 @@
++// lain: the command list in `lain help`. every category but dev, in a fixed order, names a-z.
++
++const ORDER = ["music", "playlist", "filters", "info", "config"];
++const HIDDEN = ["dev"];
++
++export interface HelpSection {
++	name: string;
++	value: string;
++}
++
++export function helpSections(commands: Iterable<{ name: string; category: string }>): HelpSection[] {
++	const byCategory = new Map<string, string[]>();
++	for (const c of commands) {
++		if (HIDDEN.includes(c.category)) continue;
++		byCategory.set(c.category, [...(byCategory.get(c.category) ?? []), c.name]);
++	}
++	const rank = (c: string) => (ORDER.includes(c) ? ORDER.indexOf(c) : ORDER.length);
++	return [...byCategory.keys()]
++		.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
++		.map((name) => ({
++			name,
++			value: byCategory
++				.get(name)!
++				.sort((a, b) => a.localeCompare(b))
++				.map((n) => `\`${n}\``)
++				.join(", "),
++		}));
++}
 diff --git a/src/lain/index.ts b/src/lain/index.ts
 new file mode 100644
 index 00000000..5d7bc796
@@ -2139,10 +2340,10 @@ index 00000000..2f6b4767
 +}
 diff --git a/src/lain/stats/format.ts b/src/lain/stats/format.ts
 new file mode 100644
-index 00000000..02a92f4f
+index 00000000..79a649f8
 --- /dev/null
 +++ b/src/lain/stats/format.ts
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,43 @@
 +// lain: text for the stats commands. lowercase, no mentions: people are shown by display name.
 +import type { Guild } from "discord.js";
 +import type { Range, Ranked } from "./queries";
@@ -2174,7 +2375,11 @@ index 00000000..02a92f4f
 +	return member?.displayName ?? `<@${userId}>`;
 +}
 +
-+export const numbered = (items: string[]) => items.map((s, i) => `${i + 1}. ${s}`).join(" · ");
++/** one item per line, so discord renders a numbered list. */
++export const numbered = (items: string[]) => items.map((s, i) => `${i + 1}. ${s}`).join("\n");
++
++/** "**1** song", "**12** songs". */
++export const count = (n: number, word: string) => `**${n}** ${word}${n === 1 ? "" : "s"}`;
 +
 +/** "<@123>", "<@!123>" or a bare id → the id. */
 +export function userIdFrom(word: string): string | null {
@@ -2712,6 +2917,50 @@ index 00000000..e1b78c64
 +	}
 +	return best;
 +}
+diff --git a/tests/help.test.ts b/tests/help.test.ts
+new file mode 100644
+index 00000000..fdce4097
+--- /dev/null
++++ b/tests/help.test.ts
+@@ -0,0 +1,38 @@
++/**
++ * lain: how `lain help` groups and sorts commands. run from the project root:
++ *
++ *   bun test tests/help.test.ts
++ */
++import { describe, expect, test } from "bun:test";
++import { helpSections } from "../src/lain/help";
++
++const cmd = (name: string, category: string) => ({ name, category });
++
++describe("helpSections", () => {
++	const all = [
++		cmd("stats", "info"),
++		cmd("skip", "music"),
++		cmd("eval", "dev"),
++		cmd("nightcore", "filters"),
++		cmd("play", "music"),
++		cmd("prefix", "config"),
++		cmd("create", "playlist"),
++		cmd("autoplay", "music"),
++		cmd("8d", "filters"),
++		cmd("help", "info"),
++	];
++
++	test("fixed category order, dev hidden, filters and playlist shown", () => {
++		expect(helpSections(all).map((s) => s.name)).toEqual(["music", "playlist", "filters", "info", "config"]);
++	});
++
++	test("commands sorted a-z inside a category", () => {
++		const music = helpSections(all).find((s) => s.name === "music")!;
++		expect(music.value).toBe("`autoplay`, `play`, `skip`");
++	});
++
++	test("unknown categories go last, sorted", () => {
++		const names = helpSections([cmd("x", "zeta"), cmd("y", "alpha"), cmd("play", "music")]).map((s) => s.name);
++		expect(names).toEqual(["music", "alpha", "zeta"]);
++	});
++});
 diff --git a/tests/search.test.ts b/tests/search.test.ts
 new file mode 100644
 index 00000000..79551610
@@ -2763,6 +3012,34 @@ index 00000000..79551610
 +		expect(pickSearch("x", undefined, ytPoke)).toBe(ytPoke);
 +		expect(pickSearch("x", ytmPoke, undefined)).toBe(ytmPoke);
 +		expect(pickSearch("x", undefined, undefined)).toBeUndefined();
++	});
++});
+diff --git a/tests/stats-format.test.ts b/tests/stats-format.test.ts
+new file mode 100644
+index 00000000..ebeeaadd
+--- /dev/null
++++ b/tests/stats-format.test.ts
+@@ -0,0 +1,22 @@
++/**
++ * lain: markdown layout of the stats replies. run from the project root:
++ *
++ *   bun test tests/stats-format.test.ts
++ */
++import { describe, expect, test } from "bun:test";
++import { count, numbered } from "../src/lain/stats/format";
++
++describe("count", () => {
++	test("bold number, singular for 1", () => {
++		expect(count(1, "song")).toBe("**1** song");
++		expect(count(12, "song")).toBe("**12** songs");
++		expect(count(0, "time")).toBe("**0** times");
++	});
++});
++
++describe("numbered", () => {
++	test("one item per line, so discord renders a list", () => {
++		expect(numbered(["a (4)", "b (3)"])).toBe("1. a (4)\n2. b (3)");
++		expect(numbered([])).toBe("");
 +	});
 +});
 diff --git a/tests/stats.test.ts b/tests/stats.test.ts
