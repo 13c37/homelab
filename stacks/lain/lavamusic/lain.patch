@@ -891,23 +891,27 @@ index a62b294b..e7482b57 100644
  	}
  }
 diff --git a/src/commands/info/Help.ts b/src/commands/info/Help.ts
-index 99ff8602..9fe25273 100644
+index 99ff8602..b34204e6 100644
 --- a/src/commands/info/Help.ts
 +++ b/src/commands/info/Help.ts
-@@ -41,8 +41,10 @@ export default class Help extends Command {
+@@ -1,3 +1,4 @@
++import { helpSections } from "../../lain/help";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+ import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+@@ -41,9 +42,8 @@ export default class Help extends Command {
  
  	public async run(client: Lavamusic, ctx: Context, args: string[]): Promise<any> {
  		const embed = this.client.embed();
 -		const guild = await client.db.get(ctx.guild.id);
 -		const commands = this.client.commands.filter((cmd) => cmd.category !== "dev");
+-		const categories = [...new Set(commands.map((cmd) => cmd.category))];
 +		// lain: always show "lain" in help, the server prefix (tanya) keeps working
 +		const shown = "lain ";
-+		const hidden = ["dev", "filters", "playlist"];
-+		const commands = this.client.commands.filter((cmd) => !hidden.includes(cmd.category));
- 		const categories = [...new Set(commands.map((cmd) => cmd.category))];
  
  		if (args[0]) {
-@@ -64,9 +66,9 @@ export default class Help extends Command {
+ 			const command = this.client.commands.get(args[0].toLowerCase());
+@@ -64,9 +64,9 @@ export default class Help extends Command {
  				.setDescription(
  					ctx.locale(I18N.commands.help.help_cmd, {
  						description: ctx.locale(command.description.content),
@@ -919,7 +923,20 @@ index 99ff8602..9fe25273 100644
  							.join(", "),
  						aliases: command.aliases.map((alias: string) => `\`${alias}\``).join(", "),
  						category: command.category,
-@@ -104,15 +106,7 @@ export default class Help extends Command {
+@@ -92,27 +92,12 @@ export default class Help extends Command {
+ 			return await ctx.sendMessage({ embeds: [helpEmbed] });
+ 		}
+ 
+-		const fields = categories.map((category) => ({
+-			name: category,
+-			value: commands
+-				.filter((cmd) => cmd.category === category)
+-				.map((cmd) => `\`${cmd.name}\``)
+-				.join(", "),
+-			inline: false,
+-		}));
++		const fields = helpSections(this.client.commands.values()).map((s) => ({ ...s, inline: false }));
+ 
  		const helpEmbed = embed
  			.setColor(client.color.main)
  			.setTitle(ctx.locale(I18N.commands.help.title))
@@ -2205,6 +2222,40 @@ index 00000000..f885c7ae
 +	});
 +	return true;
 +}
+diff --git a/src/lain/help.ts b/src/lain/help.ts
+new file mode 100644
+index 00000000..6cde1bde
+--- /dev/null
++++ b/src/lain/help.ts
+@@ -0,0 +1,28 @@
++// lain: the command list in `lain help`. every category but dev, in a fixed order, names a-z.
++
++const ORDER = ["music", "playlist", "filters", "info", "config"];
++const HIDDEN = ["dev"];
++
++export interface HelpSection {
++	name: string;
++	value: string;
++}
++
++export function helpSections(commands: Iterable<{ name: string; category: string }>): HelpSection[] {
++	const byCategory = new Map<string, string[]>();
++	for (const c of commands) {
++		if (HIDDEN.includes(c.category)) continue;
++		byCategory.set(c.category, [...(byCategory.get(c.category) ?? []), c.name]);
++	}
++	const rank = (c: string) => (ORDER.includes(c) ? ORDER.indexOf(c) : ORDER.length);
++	return [...byCategory.keys()]
++		.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
++		.map((name) => ({
++			name,
++			value: byCategory
++				.get(name)!
++				.sort((a, b) => a.localeCompare(b))
++				.map((n) => `\`${n}\``)
++				.join(", "),
++		}));
++}
 diff --git a/src/lain/index.ts b/src/lain/index.ts
 new file mode 100644
 index 00000000..5d7bc796
@@ -2866,6 +2917,50 @@ index 00000000..e1b78c64
 +	}
 +	return best;
 +}
+diff --git a/tests/help.test.ts b/tests/help.test.ts
+new file mode 100644
+index 00000000..fdce4097
+--- /dev/null
++++ b/tests/help.test.ts
+@@ -0,0 +1,38 @@
++/**
++ * lain: how `lain help` groups and sorts commands. run from the project root:
++ *
++ *   bun test tests/help.test.ts
++ */
++import { describe, expect, test } from "bun:test";
++import { helpSections } from "../src/lain/help";
++
++const cmd = (name: string, category: string) => ({ name, category });
++
++describe("helpSections", () => {
++	const all = [
++		cmd("stats", "info"),
++		cmd("skip", "music"),
++		cmd("eval", "dev"),
++		cmd("nightcore", "filters"),
++		cmd("play", "music"),
++		cmd("prefix", "config"),
++		cmd("create", "playlist"),
++		cmd("autoplay", "music"),
++		cmd("8d", "filters"),
++		cmd("help", "info"),
++	];
++
++	test("fixed category order, dev hidden, filters and playlist shown", () => {
++		expect(helpSections(all).map((s) => s.name)).toEqual(["music", "playlist", "filters", "info", "config"]);
++	});
++
++	test("commands sorted a-z inside a category", () => {
++		const music = helpSections(all).find((s) => s.name === "music")!;
++		expect(music.value).toBe("`autoplay`, `play`, `skip`");
++	});
++
++	test("unknown categories go last, sorted", () => {
++		const names = helpSections([cmd("x", "zeta"), cmd("y", "alpha"), cmd("play", "music")]).map((s) => s.name);
++		expect(names).toEqual(["music", "alpha", "zeta"]);
++	});
++});
 diff --git a/tests/search.test.ts b/tests/search.test.ts
 new file mode 100644
 index 00000000..79551610
