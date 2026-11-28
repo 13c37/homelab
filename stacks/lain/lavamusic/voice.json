@@ -1,13 +1,13 @@
 {
 	"player": {
 		"errors": {
-			"no_player": "nothing is playing. it's quiet here.",
-			"no_channel": "you're not in a voice channel. i can't hear you there.",
-			"queue_empty": "the queue is empty. it's quiet now.",
-			"no_previous": "nothing came before this.",
+			"no_player": "nothing is playing.",
+			"no_channel": "join a voice channel first.",
+			"queue_empty": "the queue is empty.",
+			"no_previous": "nothing before this.",
 			"no_song": "nothing here.",
 			"already_paused": "it's already paused.",
-			"user_not_in_voice_channel": "you're not in a voice channel. i can't hear you there."
+			"user_not_in_voice_channel": "join a voice channel first."
 		},
 		"trackStart": {
 			"line": "playing: [{title}](<{uri}>) · {author} ({duration})"
@@ -15,31 +15,31 @@
 	},
 	"events": {
 		"interaction": {
-			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
-			"different_voice_channel": "i'm somewhere else. come to {channel}.",
+			"no_voice_channel": "join a voice channel first.",
+			"different_voice_channel": "i'm in {channel}.",
 			"no_music_playing": "nothing is playing.",
 			"cooldown": "wait {time}s.",
 			"error": "something broke. `{error}`"
 		},
 		"message": {
-			"prefix_mention": "you called. say `{prefix} play <link>`. or `{prefix} help`.",
-			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
-			"different_voice_channel": "i'm somewhere else. come to {channel}.",
+			"prefix_mention": "say `{prefix} play <song>` or `{prefix} help`.",
+			"no_voice_channel": "join a voice channel first.",
+			"different_voice_channel": "i'm in {channel}.",
 			"no_music_playing": "nothing is playing.",
-			"missing_arguments": "that's not enough.",
+			"missing_arguments": "missing arguments.",
 			"missing_arguments_description": "`{command}` needs more.\n{examples}",
 			"cooldown": "wait {time}s.",
 			"error": "something broke. `{error}`",
 			"no_voice_channel_queue": "join a voice channel first.",
-			"different_voice_channel_queue": "i'm in <#{channel}>. come there."
+			"different_voice_channel_queue": "i'm in <#{channel}>."
 		}
 	},
 	"commands": {
 		"play": {
 			"loading": "looking...",
 			"errors": {
-				"search_error": "i looked. something went wrong.",
-				"no_results": "i looked everywhere. nothing.",
+				"search_error": "search failed. try again.",
+				"no_results": "no results.",
 				"queue_too_long": "the queue is full. {maxQueueSize} is the limit.",
 				"playlist_too_long": "that playlist is too long. {maxPlaylistSize} is the limit."
 			},
@@ -48,19 +48,19 @@
 		},
 		"skip": { "messages": { "skipped": "skipped." } },
 		"leave": {
-			"left": "leaving. we're all connected anyway.",
-			"not_in_channel": "i'm not anywhere."
+			"left": "left.",
+			"not_in_channel": "i'm not in a voice channel."
 		},
 		"join": {
 			"already_connected": "i'm already in <#{channelId}>.",
-			"no_voice_channel": "you're not in a voice channel. i can't hear you there.",
-			"joined": "i'm here."
+			"no_voice_channel": "join a voice channel first.",
+			"joined": "joined."
 		},
-		"stop": { "messages": { "stopped": "stopped. the queue is gone." } },
+		"stop": { "messages": { "stopped": "stopped. queue cleared." } },
 		"pause": { "successfully_paused": "paused." },
 		"resume": {
 			"errors": { "not_paused": "it's not paused." },
-			"messages": { "resumed": "back." }
+			"messages": { "resumed": "resumed." }
 		},
 		"nowplaying": {
 			"now_playing": "playing",
@@ -68,22 +68,22 @@
 		},
 		"loop": {
 			"messages": {
-				"looping_song": "this one, again and again.",
-				"looping_queue": "the whole queue, again.",
-				"looping_off": "no more loops.",
+				"looping_song": "looping this song.",
+				"looping_queue": "looping the queue.",
+				"looping_off": "loop off.",
 				"invalid_mode": "that's not a loop mode."
 			}
 		},
 		"shuffle": { "messages": { "shuffled": "shuffled." } },
 		"volume": {
 			"messages": {
-				"invalid_number": "a number, please.",
+				"invalid_number": "that's not a number.",
 				"too_low": "it can't go below 0.",
-				"too_high": "200 is the limit. louder doesn't help.",
+				"too_high": "200 is the max.",
 				"set": "volume {volume}."
 			}
 		},
-		"clearqueue": { "messages": { "cleared": "cleared. it's quiet now." } },
+		"clearqueue": { "messages": { "cleared": "queue cleared." } },
 		"queue": {
 			"now_playing": "now: [{title}](<{uri}>) `{duration}`",
 			"live": "live",
@@ -97,18 +97,18 @@
 		"replay": { "messages": { "replaying": "from the start." } },
 		"autoplay": {
 			"messages": {
-				"enabled": "autoplay on. i'll pick the next ones.",
+				"enabled": "autoplay on.",
 				"disabled": "autoplay off."
 			}
 		},
 		"247": {
 			"messages": {
-				"enabled": "i'll stay. always.",
-				"disabled": "i'll leave when it's quiet."
+				"enabled": "24/7 on.",
+				"disabled": "24/7 off."
 			}
 		},
 		"help": {
-			"content": "i'm {bot}. `{prefix} play <link>` to start. `{prefix} help <command>` for more.",
+			"content": "`{prefix} play <song>` to start. `{prefix} help <command>` for more.",
 			"title": "commands",
 			"not_found": "there's no `{cmdName}`.",
 			"footer": "{prefix} help <command>"
