@@ -1255,10 +1255,19 @@ index 00000000..cd8ea8b6
 +	}
 +}
 diff --git a/src/commands/music/Leave.ts b/src/commands/music/Leave.ts
-index 8dcaf58c..53cf5d0b 100644
+index 8dcaf58c..af4d1a19 100644
 --- a/src/commands/music/Leave.ts
 +++ b/src/commands/music/Leave.ts
-@@ -12,7 +12,7 @@ export default class Leave extends Command {
+@@ -1,6 +1,7 @@
++import { MessageFlags } from "discord.js";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+-import { EmbedLinks, ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+ 
+ export default class Leave extends Command {
+ 	constructor(client: Lavamusic) {
+@@ -12,7 +13,7 @@ export default class Leave extends Command {
  				usage: "leave",
  			},
  			category: "music",
@@ -1267,6 +1276,46 @@ index 8dcaf58c..53cf5d0b 100644
  			cooldown: 3,
  			args: false,
  			vote: false,
+@@ -24,7 +25,7 @@ export default class Leave extends Command {
+ 			},
+ 			permissions: {
+ 				dev: false,
+-				client: [SendMessages, ReadMessageHistory, ViewChannel, EmbedLinks],
++				client: [SendMessages, ReadMessageHistory, ViewChannel],
+ 				user: [],
+ 			},
+ 			slashCommand: true,
+@@ -34,25 +35,10 @@ export default class Leave extends Command {
+ 
+ 	public async run(client: Lavamusic, ctx: Context): Promise<any> {
+ 		const player = client.manager.getPlayer(ctx.guild.id);
+-		const embed = this.client.embed();
+-
+-		if (player) {
+-			const channelId = player.voiceChannelId;
+-			player.destroy();
+-			return await ctx.sendMessage({
+-				embeds: [
+-					embed
+-						.setColor(this.client.color.main)
+-						.setDescription(ctx.locale(I18N.commands.leave.left, { channelId })),
+-				],
+-			});
+-		}
+-		return await ctx.sendMessage({
+-			embeds: [
+-				embed
+-					.setColor(this.client.color.red)
+-					.setDescription(ctx.locale(I18N.commands.leave.not_in_channel)),
+-			],
+-		});
++		if (!player) return await ctx.sendMessage(ctx.locale(I18N.commands.leave.not_in_channel));
++		player.destroy();
++		// lain: leaving is the answer. prefix gets a reaction, slash needs some reply
++		if (ctx.isInteraction) return await ctx.interaction?.reply({ content: ctx.locale(I18N.commands.leave.left), flags: MessageFlags.Ephemeral });
++		return await ctx.message?.react("👋").catch(() => {});
+ 	}
+ }
 diff --git a/src/commands/music/Loop.ts b/src/commands/music/Loop.ts
 index 684e41b0..b9c135c1 100644
 --- a/src/commands/music/Loop.ts
