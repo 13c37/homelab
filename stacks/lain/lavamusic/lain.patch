@@ -1492,7 +1492,7 @@ index 47ab1204..32a111c6 100644
 +	(table) => [index("voice_session_guild_joined").on(table.guildId, table.joinedAt)],
 +);
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..2348aa36 100644
+index 7a3732e7..c896294c 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
 @@ -1,3 +1,5 @@
@@ -1501,15 +1501,16 @@ index 7a3732e7..2348aa36 100644
  import {
  	ActionRowBuilder,
  	ButtonBuilder,
-@@ -13,6 +15,7 @@ import {
+@@ -13,6 +15,8 @@ import {
  import { I18N, t } from "../../structures/I18n";
  import { Context, Event, type Lavamusic } from "../../structures/index";
  import logger from "../../structures/Logger";
 +import { chat, chatEnabled } from "../../lain/chat";
++import { needsMore } from "../../lain/help";
  import { LavamusicEventType } from "../../types/events";
  export default class MessageCreate extends Event {
  	constructor(client: Lavamusic, file: string) {
-@@ -22,7 +25,12 @@ export default class MessageCreate extends Event {
+@@ -22,7 +26,12 @@ export default class MessageCreate extends Event {
  		});
  	}
  
@@ -1523,7 +1524,7 @@ index 7a3732e7..2348aa36 100644
  		if (message.author.bot) return;
  		if (!(message.guild && message.guildId)) return;
  
-@@ -33,14 +41,15 @@ export default class MessageCreate extends Event {
+@@ -33,14 +42,15 @@ export default class MessageCreate extends Event {
  		]);
  
  		if (setup && setup.textId === message.channelId) {
@@ -1541,7 +1542,7 @@ index 7a3732e7..2348aa36 100644
  				}),
  			});
  			return;
-@@ -48,9 +57,15 @@ export default class MessageCreate extends Event {
+@@ -48,9 +58,15 @@ export default class MessageCreate extends Event {
  
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  		const prefixRegex = new RegExp(
@@ -1559,7 +1560,7 @@ index 7a3732e7..2348aa36 100644
  		const match = message.content.match(prefixRegex);
  		if (!match) return;
  		const [matchedPrefix] = match;
-@@ -60,7 +75,21 @@ export default class MessageCreate extends Event {
+@@ -60,7 +76,21 @@ export default class MessageCreate extends Event {
  		const command =
  			this.client.commands.get(cmd) ||
  			this.client.commands.get(this.client.aliases.get(cmd) as string);
@@ -1582,6 +1583,33 @@ index 7a3732e7..2348aa36 100644
  
  		const ctx = new Context(message, args);
  		ctx.guildLocale = locale;
+@@ -242,21 +272,11 @@ export default class MessageCreate extends Event {
+ 		}
+ 
+ 		if (command.args && args.length === 0) {
+-			const embed = this.client
+-				.embed()
+-				.setColor(this.client.color.red)
+-				.setTitle(t(I18N.events.message.missing_arguments, { lng: locale }))
+-				.setDescription(
+-					t(I18N.events.message.missing_arguments_description, {
+-						lng: locale,
+-						command: command.name,
+-						examples: command.description.examples
+-							? command.description.examples.join("\n")
+-							: "None",
+-					}),
+-				)
+-				.setFooter({ text: t(I18N.events.message.syntax_footer, { lng: locale }) });
+-			await message.reply({ embeds: [embed] });
++			// lain: plain text with the lain prefix, like help
++			await message.reply({
++				content: needsMore({ name: command.name, examples: command.description.examples ?? [] }),
++				allowedMentions: { repliedUser: false },
++			});
+ 			return;
+ 		}
+ 
 diff --git a/src/events/client/Raw.ts b/src/events/client/Raw.ts
 index ea0d03cc..7e202b7c 100644
 --- a/src/events/client/Raw.ts
@@ -2268,10 +2296,10 @@ index 00000000..f885c7ae
 +}
 diff --git a/src/lain/help.ts b/src/lain/help.ts
 new file mode 100644
-index 00000000..b584438a
+index 00000000..95e82575
 --- /dev/null
 +++ b/src/lain/help.ts
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,83 @@
 +// lain: what `lain help` prints. same look as the stats: ### title, bold labels, -# extras, no embeds.
 +
 +const ORDER = ["music", "playlist", "filters", "info", "config"];
@@ -2342,6 +2370,13 @@ index 00000000..b584438a
 +	if (c.aliases.length) lines.push(`**aliases** ${c.aliases.map(code).join(" ")}`);
 +	lines.push(`-# ${c.category} · cooldown ${c.cooldown}s`);
 +	return lines.join("\n");
++}
++
++// reply when a command is used without the arguments it needs
++export function needsMore(c: { name: string; examples: string[] }): string {
++	const head = `${code(SHOWN + c.name)} needs more.`;
++	if (!c.examples.length) return `${head} see ${code(`lain help ${c.name}`)}`;
++	return `${head} try ${c.examples.slice(0, 2).map((e) => code(SHOWN + e)).join(" · ")}`;
 +}
 +
 +// what botinfo counts: everything help can show
@@ -3021,17 +3056,17 @@ index 00000000..e1b78c64
 +}
 diff --git a/tests/help.test.ts b/tests/help.test.ts
 new file mode 100644
-index 00000000..d4e553f7
+index 00000000..323b9a2c
 --- /dev/null
 +++ b/tests/help.test.ts
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,118 @@
 +/**
 + * lain: what `lain help` prints. run from the project root:
 + *
 + *   bun test tests/help.test.ts
 + */
 +import { describe, expect, test } from "bun:test";
-+import { categoryHelp, commandCount, commandHelp, helpOverview } from "../src/lain/help";
++import { categoryHelp, commandCount, commandHelp, helpOverview, needsMore } from "../src/lain/help";
 +
 +const cmd = (name: string, category: string) => ({ name, category });
 +
@@ -3130,6 +3165,17 @@ index 00000000..d4e553f7
 +describe("commandCount", () => {
 +	test("counts every category but dev", () => {
 +		expect(commandCount(all)).toBe(10);
++	});
++});
++
++describe("needsMore", () => {
++	test("names the command with lain and shows up to two examples", () => {
++		expect(needsMore({ name: "play", examples: ["play lain", "play https://youtu.be/x", "play x"] })).toBe(
++			"`lain play` needs more. try `lain play lain` · `lain play https://youtu.be/x`",
++		);
++	});
++	test("falls back to help when there are no examples", () => {
++		expect(needsMore({ name: "seek", examples: [] })).toBe("`lain seek` needs more. see `lain help seek`");
 +	});
 +});
 diff --git a/tests/search.test.ts b/tests/search.test.ts
