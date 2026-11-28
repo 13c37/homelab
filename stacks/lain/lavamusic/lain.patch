@@ -561,15 +561,13 @@ index 54d0b23c..75fd3268 100644
  import { env } from "./env";
  import Lavamusic from "./structures/Lavamusic";
 diff --git a/src/commands/config/247.ts b/src/commands/config/247.ts
-deleted file mode 100644
-index 81823fa0..00000000
+index 81823fa0..794b93b4 100644
 --- a/src/commands/config/247.ts
-+++ /dev/null
-@@ -1,98 +0,0 @@
--import type { GuildMember } from "discord.js";
--import { I18N } from "../../structures/I18n";
--import { Command, type Context, type Lavamusic } from "../../structures/index";
--import logger from "../../structures/Logger";
++++ b/src/commands/config/247.ts
+@@ -2,14 +2,9 @@ import type { GuildMember } from "discord.js";
+ import { I18N } from "../../structures/I18n";
+ import { Command, type Context, type Lavamusic } from "../../structures/index";
+ import logger from "../../structures/Logger";
 -import {
 -	EmbedLinks,
 -	ManageGuild,
@@ -577,43 +575,41 @@ index 81823fa0..00000000
 -	SendMessages,
 -	ViewChannel,
 -} from "../../utils/Permissions";
--
--export default class _247 extends Command {
--	constructor(client: Lavamusic) {
--		super(client, {
--			name: "247",
--			description: {
--				content: I18N.commands[247].description,
--				examples: ["247"],
--				usage: "247",
--			},
--			category: "config",
--			aliases: ["stay"],
--			cooldown: 3,
--			args: false,
++import { ReadMessageHistory, SendMessages, ViewChannel } from "../../utils/Permissions";
+ 
++// lain: 24/7 toggle, plain text. anyone in vc can use it (small private server).
+ export default class _247 extends Command {
+ 	constructor(client: Lavamusic) {
+ 		super(client, {
+@@ -23,7 +18,7 @@ export default class _247 extends Command {
+ 			aliases: ["stay"],
+ 			cooldown: 3,
+ 			args: false,
 -			vote: true,
--			player: {
--				voice: true,
--				dj: false,
--				active: false,
--				djPerm: null,
--			},
--			permissions: {
--				dev: false,
++			vote: false,
+ 			player: {
+ 				voice: true,
+ 				dj: false,
+@@ -32,8 +27,8 @@ export default class _247 extends Command {
+ 			},
+ 			permissions: {
+ 				dev: false,
 -				client: [SendMessages, ReadMessageHistory, ViewChannel, EmbedLinks],
 -				user: [ManageGuild],
--			},
--			slashCommand: true,
--			options: [],
--		});
--	}
--
--	public async run(client: Lavamusic, ctx: Context): Promise<any> {
++				client: [SendMessages, ReadMessageHistory, ViewChannel],
++				user: [],
+ 			},
+ 			slashCommand: true,
+ 			options: [],
+@@ -41,58 +36,31 @@ export default class _247 extends Command {
+ 	}
+ 
+ 	public async run(client: Lavamusic, ctx: Context): Promise<any> {
 -		const embed = this.client.embed();
--		let player = client.manager.getPlayer(ctx.guild.id);
--		try {
+ 		let player = client.manager.getPlayer(ctx.guild.id);
+ 		try {
 -			const data = await client.db.get_247(ctx.guild.id);
--			const member = ctx.member as GuildMember | null;
+ 			const member = ctx.member as GuildMember | null;
 -			if (!member?.voice?.channel) {
 -				return await ctx.sendMessage({
 -					embeds: [
@@ -624,7 +620,10 @@ index 81823fa0..00000000
 -				});
 -			}
 -			if (data) {
--				await client.db.delete_247(ctx.guild.id);
++			const vc = member?.voice?.channel;
++			if (!vc) return await ctx.sendMessage("join a voice channel first.");
++			if (await client.db.get_247(ctx.guild.id)) {
+ 				await client.db.delete_247(ctx.guild.id);
 -				return await ctx.sendMessage({
 -					embeds: [
 -						embed
@@ -632,19 +631,23 @@ index 81823fa0..00000000
 -							.setColor(client.color.red),
 -					],
 -				});
--			}
++				return await ctx.sendMessage("24/7 off. leaving when the music stops.");
+ 			}
 -			await client.db.set_247(ctx.guild.id, ctx.channel!.id, member.voice.channel.id);
--			if (!player) {
--				player = client.manager.createPlayer({
--					guildId: ctx.guild.id,
++			await client.db.set_247(ctx.guild.id, ctx.channel!.id, vc.id);
+ 			if (!player) {
+ 				player = client.manager.createPlayer({
+ 					guildId: ctx.guild.id,
 -					voiceChannelId: member.voice.channel.id,
--					textChannelId: ctx.channel!.id,
--					selfMute: false,
--					selfDeaf: true,
++					voiceChannelId: vc.id,
+ 					textChannelId: ctx.channel!.id,
+ 					selfMute: false,
+ 					selfDeaf: true,
 -					vcRegion: member.voice.channel.rtcRegion ?? undefined,
--				});
--			}
--			if (!player.connected) await player.connect();
++					vcRegion: vc.rtcRegion ?? undefined,
+ 				});
+ 			}
+ 			if (!player.connected) await player.connect();
 -			return await ctx.sendMessage({
 -				embeds: [
 -					embed
@@ -652,8 +655,9 @@ index 81823fa0..00000000
 -						.setColor(this.client.color.main),
 -				],
 -			});
--		} catch (error) {
--			logger.error("Error in 247 command:", error);
++			return await ctx.sendMessage("24/7 on. staying in call.");
+ 		} catch (error) {
+ 			logger.error("Error in 247 command:", error);
 -			return await ctx.sendMessage({
 -				embeds: [
 -					embed
@@ -661,9 +665,10 @@ index 81823fa0..00000000
 -						.setColor(client.color.red),
 -				],
 -			});
--		}
--	}
--}
++			return await ctx.sendMessage("couldn't change 24/7. try again.");
+ 		}
+ 	}
+ }
 diff --git a/src/commands/config/Dj.ts b/src/commands/config/Dj.ts
 index a1caef04..c97d621d 100644
 --- a/src/commands/config/Dj.ts
@@ -690,26 +695,6 @@ index c370e8cb..ef9c651f 100644
  			aliases: ["pre"],
  			cooldown: 3,
  			args: true,
-diff --git a/src/commands/index.ts b/src/commands/index.ts
-index d3d6c73d..e59bc411 100644
---- a/src/commands/index.ts
-+++ b/src/commands/index.ts
-@@ -2,7 +2,6 @@
- // Run: bun run scripts/generate-registry.ts
- // biome-ignore-all lint: generated file
- 
--import _247 from "./config/247";
- import Dj from "./config/Dj";
- import Language from "./config/Language";
- import Prefix from "./config/Prefix";
-@@ -68,7 +67,6 @@ import RemoveSong from "./playlist/RemoveSong";
- import Steal from "./playlist/Steal";
- 
- export const CommandList = [
--	_247,
- 	Dj,
- 	Language,
- 	Prefix,
 diff --git a/src/commands/info/About.ts b/src/commands/info/About.ts
 index b6f4295e..c3860eeb 100644
 --- a/src/commands/info/About.ts
@@ -1322,6 +1307,19 @@ index fe7b01d5..88ca90b1 100644
  			return await ctx.editMessage({
  				content: "",
  				embeds: [
+diff --git a/src/commands/music/Queue.ts b/src/commands/music/Queue.ts
+index 1ddaca79..02acaa30 100644
+--- a/src/commands/music/Queue.ts
++++ b/src/commands/music/Queue.ts
+@@ -12,7 +12,7 @@ export default class Queue extends Command {
+ 				usage: "queue",
+ 			},
+ 			category: "music",
+-			aliases: ["q"],
++			aliases: ["q", "current"],
+ 			cooldown: 3,
+ 			args: false,
+ 			vote: false,
 diff --git a/src/commands/music/Repeat.ts b/src/commands/music/Repeat.ts
 new file mode 100644
 index 00000000..de978dbe
@@ -1493,31 +1491,8 @@ index 47ab1204..32a111c6 100644
 +	},
 +	(table) => [index("voice_session_guild_joined").on(table.guildId, table.joinedAt)],
 +);
-diff --git a/src/database/server.ts b/src/database/server.ts
-index 8cf504a8..99086b30 100644
---- a/src/database/server.ts
-+++ b/src/database/server.ts
-@@ -1,4 +1,5 @@
- import { getDatabase, type IDatabaseProvider } from "./index";
-+import type { Stay } from "./types";
- 
- /**
-  * ServerData provides a backward-compatible API for database operations.
-@@ -83,9 +84,9 @@ export default class ServerData {
- 		await provider.stays.delete(guildId);
- 	}
- 
--	public async get_247(guildId?: string) {
--		const provider = await this.getProvider();
--		return provider.stays.get(guildId);
-+	// lain: 24/7 is gone; ignore any saved stay so the bot never sticks in vc.
-+	public async get_247(_guildId?: string): Promise<Stay | Stay[] | null> {
-+		return null;
- 	}
- 
- 	// -----------------------------
 diff --git a/src/events/client/MessageCreate.ts b/src/events/client/MessageCreate.ts
-index 7a3732e7..03162bc2 100644
+index 7a3732e7..2348aa36 100644
 --- a/src/events/client/MessageCreate.ts
 +++ b/src/events/client/MessageCreate.ts
 @@ -1,3 +1,5 @@
@@ -1548,7 +1523,7 @@ index 7a3732e7..03162bc2 100644
  		if (message.author.bot) return;
  		if (!(message.guild && message.guildId)) return;
  
-@@ -33,10 +41,11 @@ export default class MessageCreate extends Event {
+@@ -33,14 +41,15 @@ export default class MessageCreate extends Event {
  		]);
  
  		if (setup && setup.textId === message.channelId) {
@@ -1561,6 +1536,11 @@ index 7a3732e7..03162bc2 100644
  			await message.reply({
  				content: t(I18N.events.message.prefix_mention, {
  					lng: locale,
+-					prefix: guild?.prefix,
++					prefix: "lain",
+ 				}),
+ 			});
+ 			return;
 @@ -48,9 +57,15 @@ export default class MessageCreate extends Event {
  
  		const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
